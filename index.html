@@ -59,10 +59,29 @@
       border-bottom: 3px solid var(--gold);
     }
 
+    .ext-browser-banner {
+      max-width: 600px;
+      margin: 10px auto 0 auto;
+      padding: 0 12px;
+    }
+    .ext-browser-card {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: #92400e;
+      font-weight: bold;
+    }
+
     /* 合言葉ロック画面 */
     .lock-screen {
       max-width: 420px;
-      margin: 40px auto;
+      margin: 32px auto;
       padding: 0 16px;
     }
     .lock-card {
@@ -556,6 +575,14 @@
 
 <header>🏀 GB-Rings 🏀</header>
 
+<!-- LINE内ブラウザ向け：外部ブラウザで開くバナー -->
+<div id="top-external-browser-banner" class="ext-browser-banner hidden">
+  <div class="ext-browser-card">
+    <span>LINE内ブラウザ表示中（画像共有・キャッシュ回避に外部ブラウザ推奨）</span>
+    <button class="btn btn-outline btn-sm" style="white-space:nowrap;" onclick="openInExternalBrowser()">🌐 ブラウザで開く</button>
+  </div>
+</div>
+
 <!-- 合言葉ロック画面 -->
 <div id="lock-screen" class="lock-screen">
   <div class="lock-card">
@@ -771,9 +798,31 @@
     });
   }
 
+  function isLineInAppBrowser() {
+    return /Line\//i.test(navigator.userAgent || "");
+  }
+
+  function updateExternalBrowserBanner() {
+    const banner = document.getElementById("top-external-browser-banner");
+    if (!banner) return;
+    if (isLineInAppBrowser()) {
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  }
+
+  function openInExternalBrowser() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("openExternalBrowser", "1");
+    url.searchParams.set("_t", String(Date.now()));
+    window.location.href = url.toString();
+  }
+
   window.addEventListener("DOMContentLoaded", async () => {
     preloadCanvasIcons();
     initStaticCategoryIcons();
+    updateExternalBrowserBanner();
 
     if (localStorage.getItem(AUTH_STORAGE_KEY) === APP_PASSCODE) {
       showMainApp();
@@ -1390,7 +1439,7 @@
   }
 
   // =========================================================================
-  // 「同カテゴリ隣り合い（1-2, 2-3...7-1）ゼロ」を絶対保証する順列生成
+  // 「同カテゴリ隣り合い」＋「コート上メンバーのバランス（大男全抜け・女性ビギナー過半数回避）」
   // =========================================================================
 
   function countAdjacentSame(roles) {
@@ -1404,6 +1453,75 @@
       adj += 1;
     }
     return adj;
+  }
+
+  /**
+   * チーム内の役割順 slots と現在のカーソル cursor、出場人数 onCourtCount から
+   * 「実際にコート上に残るメンバー」と「ベンチに下がるメンバー」を返す
+   */
+  function splitOnCourtAndBench(slots, cursor, onCourtCount) {
+    const n = slots.length;
+    if (n === 0) return { onCourt: [], bench: [] };
+    const activeCount = Math.min(n, Math.max(1, onCourtCount));
+    const startIdx = ((cursor % n) + n) % n;
+
+    const onCourt = [];
+    const bench = [];
+    for (let k = 0; k < n; k++) {
+      const role = slots[(startIdx + k) % n];
+      if (k < activeCount) {
+        onCourt.push(role);
+      } else {
+        bench.push(role);
+      }
+    }
+    return { onCourt, bench };
+  }
+
+  function countRoleInList(list, targetRole) {
+    return list.filter(r => r === targetRole).length;
+  }
+
+  /**
+   * コート上のメンバーバランスに対するペナルティ
+   * - チーム内に bm（大男）がいるのに、コート上の bm が 0人 になるのを強く防ぐ
+   * - コート上の fm（女性）+ b（ビギナー）が半数以上（例：4人中3人以上）になるのを強く防ぐ
+   */
+  function calcOnCourtBalancePenalty(onCourt, totalTeamCounts) {
+    if (!onCourt || onCourt.length === 0) return 0;
+    let penalty = 0;
+
+    const courtSize = onCourt.length;
+    const courtBm = countRoleInList(onCourt, "bm");
+    const courtFm = countRoleInList(onCourt, "fm");
+    const courtB = countRoleInList(onCourt, "b");
+    const courtNorm = countRoleInList(onCourt, "normal");
+    const courtFmPlusB = courtFm + courtB;
+
+    // 1. チームに大男がいるのに、コート上に大男が0人になる（＝大男が全員同時に抜ける）
+    const teamHasBm = (totalTeamCounts.bm || 0) > 0;
+    if (teamHasBm && courtBm === 0) {
+      penalty += 4500;
+    }
+
+    // 2. 女性＋ビギナーがコート上の半数以上（例：4人なら3人以上、5人なら3人以上）
+    const halfThreshold = Math.floor(courtSize / 2) + 1;
+    if (courtFmPlusB >= halfThreshold) {
+      penalty += 3500 + (courtFmPlusB - halfThreshold + 1) * 1200;
+    }
+
+    // 3. 大男と女性/ビギナーの偏りバランス（大男が1人しかいない場合、女性/ビギナーと同時出場しすぎないよう微調整）
+    if (courtBm === 0 && courtFmPlusB >= Math.ceil(courtSize / 2)) {
+      penalty += 900;
+    }
+
+    // 4. 同じカテゴリがコート上に極端に偏るのを抑える
+    const maxSameOnCourt = Math.max(courtBm, courtFm, courtB, courtNorm);
+    if (maxSameOnCourt >= Math.ceil(courtSize * 0.75)) {
+      penalty += 500;
+    }
+
+    return penalty;
   }
 
   function getStrictNoAdjacentArrangements(roleCounts) {
@@ -1509,12 +1627,13 @@
 
     const lenA = teamA.length;
     const lenB = teamB.length;
+    const courtSize = Math.min(5, lenA, lenB);
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
     const lcmTurns =
       subA > 0 && subB > 0
-        ? Math.min(24, (subA * subB) / gcd(subA, subB) * Math.max(lenA, lenB))
-        : Math.max(lenA, lenB, 6);
-    const simTurns = Math.max(6, Math.min(24, Number.isFinite(lcmTurns) ? lcmTurns : 12));
+        ? Math.min(24, ((subA * subB) / gcd(subA, subB)) * Math.max(lenA, lenB))
+        : Math.max(lenA, lenB, 8);
+    const simTurns = Math.max(8, Math.min(24, Number.isFinite(lcmTurns) ? lcmTurns : 12));
 
     const evalSlotAlignment = (sA, sB) => {
       let cost = countAdjacentSame(sA) * 1000000 + countAdjacentSame(sB) * 1000000;
@@ -1522,27 +1641,35 @@
 
       for (let i = 0; i < minLen; i++) {
         if (sA[i] !== sB[i]) {
-          cost += 200;
+          cost += 120;
         }
       }
 
-      if ((subA > 0 || subB > 0) && sA.length > 0 && sB.length > 0) {
+      if (sA.length > 0 && sB.length > 0) {
         for (let t = 0; t < simTurns; t++) {
-          const outA = {};
-          const outB = {};
+          const splitA = splitOnCourtAndBench(sA, t * subA, courtSize);
+          const splitB = splitOnCourtAndBench(sB, t * subB, courtSize);
 
-          for (let k = 0; k < subA; k++) {
-            const role = sA[(t * subA + k) % sA.length];
-            outA[role] = (outA[role] || 0) + 1;
-          }
-          for (let k = 0; k < subB; k++) {
-            const role = sB[(t * subB + k) % sB.length];
-            outB[role] = (outB[role] || 0) + 1;
+          // コート上のバランス（大男全抜け・女性ビギナー過半数回避）を評価
+          cost += calcOnCourtBalancePenalty(splitA.onCourt, countsA);
+          cost += calcOnCourtBalancePenalty(splitB.onCourt, countsB);
+
+          // 交代（ベンチ）メンバーのカテゴリ均衡も評価
+          if (subA > 0 || subB > 0) {
+            CATEGORIES.forEach(c => {
+              const outACnt = countRoleInList(splitA.bench, c);
+              const outBCnt = countRoleInList(splitB.bench, c);
+              const w = c === "bm" ? 60 : c === "fm" || c === "b" ? 50 : 35;
+              cost += Math.abs(outACnt - outBCnt) * w;
+            });
           }
 
+          // 同じターンでコートに出る2チームの戦力差も抑える
           CATEGORIES.forEach(c => {
-            const w = c === "bm" ? 60 : c === "fm" || c === "b" ? 50 : 35;
-            cost += Math.abs((outA[c] || 0) - (outB[c] || 0)) * w;
+            const onACnt = countRoleInList(splitA.onCourt, c);
+            const onBCnt = countRoleInList(splitB.onCourt, c);
+            const w = c === "bm" ? 45 : c === "fm" || c === "b" ? 40 : 25;
+            cost += Math.abs(onACnt - onBCnt) * w;
           });
         }
       }
@@ -1550,8 +1677,8 @@
       return cost;
     };
 
-    const sampleA = validSlotsA.length > 80 ? shuffle(validSlotsA).slice(0, 80) : validSlotsA;
-    const sampleB = validSlotsB.length > 80 ? shuffle(validSlotsB).slice(0, 80) : validSlotsB;
+    const sampleA = validSlotsA.length > 100 ? shuffle(validSlotsA).slice(0, 100) : validSlotsA;
+    const sampleB = validSlotsB.length > 100 ? shuffle(validSlotsB).slice(0, 100) : validSlotsB;
 
     for (let i = 0; i < sampleA.length; i++) {
       for (let j = 0; j < sampleB.length; j++) {
@@ -1576,6 +1703,14 @@
     const teamCountLocal = teams.length;
     const totalRounds = roundsPairings.length * 3;
 
+    const teamCountsList = teams.map(t => {
+      const counts = {};
+      CATEGORIES.forEach(c => {
+        counts[c] = countByResultCat(t, c);
+      });
+      return counts;
+    });
+
     const candSlotPools = teams.map(t => {
       const counts = {};
       CATEGORIES.forEach(c => {
@@ -1599,26 +1734,33 @@
           const subI = Math.max(0, teams[i].length - courtSize);
           const subJ = Math.max(0, teams[j].length - courtSize);
 
-          const groupI = {};
-          for (let k = 0; k < subI; k++) {
-            const role = chosenSlots[i][(cursors[i] + k) % teams[i].length];
-            groupI[role] = (groupI[role] || 0) + 1;
-          }
+          const splitI = splitOnCourtAndBench(chosenSlots[i], cursors[i], courtSize);
           cursors[i] += subI;
 
-          const groupJ = {};
-          for (let k = 0; k < subJ; k++) {
-            const role = chosenSlots[j][(cursors[j] + k) % teams[j].length];
-            groupJ[role] = (groupJ[role] || 0) + 1;
-          }
+          const splitJ = splitOnCourtAndBench(chosenSlots[j], cursors[j], courtSize);
           cursors[j] += subJ;
 
+          // 出場メンバー（コート上）のバランスを評価
+          matchDiffScore += calcOnCourtBalancePenalty(splitI.onCourt, teamCountsList[i]);
+          matchDiffScore += calcOnCourtBalancePenalty(splitJ.onCourt, teamCountsList[j]);
+
+          // 交代メンバーのカテゴリ差を評価
           if (subI > 0 && subI === subJ) {
             CATEGORIES.forEach(c => {
+              const outICnt = countRoleInList(splitI.bench, c);
+              const outJCnt = countRoleInList(splitJ.bench, c);
               const w = c === "bm" ? 50 : c === "fm" || c === "b" ? 45 : 30;
-              matchDiffScore += Math.abs((groupI[c] || 0) - (groupJ[c] || 0)) * w;
+              matchDiffScore += Math.abs(outICnt - outJCnt) * w;
             });
           }
+
+          // 対戦チーム同士のコート上戦力差も評価
+          CATEGORIES.forEach(c => {
+            const onICnt = countRoleInList(splitI.onCourt, c);
+            const onJCnt = countRoleInList(splitJ.onCourt, c);
+            const w = c === "bm" ? 35 : c === "fm" || c === "b" ? 30 : 20;
+            matchDiffScore += Math.abs(onICnt - onJCnt) * w;
+          });
         }
       }
       return matchDiffScore;
@@ -1627,7 +1769,7 @@
     let bestSlots = candSlotPools.map(pool => pool[0]);
     let bestScore = evalSchedule(bestSlots);
 
-    const trials = isSwapMode ? 1500 : 1200;
+    const trials = isSwapMode ? 1800 : 1400;
     for (let t = 0; t < trials; t++) {
       const trialSlots = candSlotPools.map(pool => pool[Math.floor(Math.random() * pool.length)]);
       const sc = evalSchedule(trialSlots);
@@ -2104,16 +2246,6 @@
       ia[i] = byteString.charCodeAt(i);
     }
     return new Blob([ab], { type: mime });
-  }
-
-  function isLineInAppBrowser() {
-    return /Line\//i.test(navigator.userAgent || "");
-  }
-
-  function openInExternalBrowser() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("openExternalBrowser", "1");
-    window.location.href = url.toString();
   }
 
   async function createAndShareResultImage() {
