@@ -674,8 +674,8 @@
       <div id="history-area" class="history-box hidden"></div>
 
       <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
-        <button class="btn btn-image" onclick="createAndShareResultImage()">📸 結果画像を作成・共有</button>
-        <button class="btn btn-line" onclick="shareToLine()">LINEに結果を送信・共有</button>
+        <button class="btn btn-line" onclick="shareUrlToLine()">🔗 LINEで共有</button>
+        <button class="btn btn-image" onclick="createAndShareResultImage()">📸 画像作成・共有</button>
         <button class="btn btn-outline" onclick="copyResult()">📋 テキストをコピー</button>
       </div>
 
@@ -742,6 +742,7 @@
   const SESSION_STORAGE_KEY = "gbrings_session_state_v2";
   const CATEGORIES = ["bm", "fm", "b", "normal"];
   const SUB_CATEGORIES = ["bm"];
+  const MAX_LINE_SHARE_URL_LENGTH = 2200;
 
   const CATEGORY_ICON_SVG = {
     bm: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -845,6 +846,50 @@
     }
   }
 
+  function compactTeamResultsForShare(ctx) {
+    if (!ctx || !Array.isArray(ctx.teamResults)) return null;
+    return {
+      r: ctx.roundNum || 1,
+      tc: ctx.effectiveTeamCount || 2,
+      t: ctx.teamResults.map(tObj => ({
+        m: (tObj.members || []).map(p => ({
+          n: p.name,
+          c: p.category,
+          ar: p.assignedRole || p.category,
+          g: p.isGuest ? 1 : 0
+        })),
+        ns: tObj.needsSubOrder ? 1 : 0,
+        sc: tObj.subCount || 0,
+        mo: tObj.minOnCourt || 5,
+        b: tObj.bibs ? [tObj.bibs.label, tObj.bibs.cssClass] : ["", ""]
+      }))
+    };
+  }
+
+  function expandCompactTeamResults(compact) {
+    if (!compact || !Array.isArray(compact.t)) return null;
+    return {
+      roundNum: compact.r || 1,
+      effectiveTeamCount: compact.tc || 2,
+      teamResults: compact.t.map((ct, idx) => ({
+        members: (ct.m || []).map((pm, pIdx) => ({
+          id: `s_${idx}_${pIdx}`,
+          name: pm.n || "",
+          category: pm.c || "normal",
+          assignedRole: pm.ar || pm.c || "normal",
+          isGuest: Boolean(pm.g)
+        })),
+        needsSubOrder: Boolean(ct.ns),
+        subCount: ct.sc || 0,
+        minOnCourt: ct.mo || 5,
+        bibs: {
+          label: (ct.b && ct.b[0]) || "",
+          cssClass: (ct.b && ct.b[1]) || "bibs-off"
+        }
+      }))
+    };
+  }
+
   function applyImportedSessionState(saved) {
     if (!saved || typeof saved !== "object") return;
     if (Array.isArray(saved.members)) {
@@ -863,7 +908,17 @@
     teamCount = [2, 3, 4].includes(saved.teamCount) ? saved.teamCount : 2;
     roundHistory = Array.isArray(saved.roundHistory) ? saved.roundHistory : [];
     currentRound = typeof saved.currentRound === "number" ? saved.currentRound : 0;
-    lastRenderedContext = saved.lastRenderedContext || null;
+
+    if (saved.compactResult) {
+      const expanded = expandCompactTeamResults(saved.compactResult);
+      if (expanded) {
+        lastRenderedContext = expanded;
+        currentRound = expanded.roundNum;
+        teamCount = expanded.effectiveTeamCount;
+      }
+    } else if (saved.lastRenderedContext) {
+      lastRenderedContext = saved.lastRenderedContext;
+    }
 
     if (document.getElementById("pair-same-sub") && typeof saved.pairSameSub === "boolean") {
       document.getElementById("pair-same-sub").checked = saved.pairSameSub;
@@ -874,13 +929,18 @@
     });
   }
 
-  function openInExternalBrowser() {
+  function buildSharePayload({ includeMembers = false, compactForShare = false } = {}) {
     const pairSameSub = document.getElementById("pair-same-sub")
       ? document.getElementById("pair-same-sub").checked
       : true;
 
-    const transferPayload = {
-      members,
+    if (compactForShare) {
+      return {
+        compactResult: compactTeamResultsForShare(lastRenderedContext)
+      };
+    }
+
+    const payload = {
       selectedMemberIds: Array.from(selectedMemberIds),
       guests,
       guestCounter,
@@ -890,7 +950,59 @@
       currentRound,
       lastRenderedContext
     };
+    if (includeMembers) {
+      payload.members = members;
+    }
+    return payload;
+  }
 
+  function buildShareUrl({ includeMembers = false, compactForShare = false } = {}) {
+    const payload = buildSharePayload({ includeMembers, compactForShare });
+    const encodedState = encodeStateToHash(payload);
+    const baseUrl = window.location.origin + window.location.pathname;
+    if (!encodedState) return baseUrl;
+    return `${baseUrl}#state=${encodedState}`;
+  }
+
+  async function shareUrlToLine() {
+    if (!lastRenderedContext || !lastRenderedContext.teamResults || lastRenderedContext.teamResults.length === 0) {
+      alert("先にチーム分けを実行してください。");
+      return;
+    }
+
+    const shareUrl = buildShareUrl({ includeMembers: false, compactForShare: true });
+    const roundLabel = `${currentRound || 1}回戦`;
+    const shareMessage = `🏀 GB-Rings 🏀 チーム分け結果（${roundLabel}）\n${shareUrl}`;
+    const lineSchemeUrl = `https://line.me/R/share?text=${encodeURIComponent(shareMessage)}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch (e) {
+        // クリップボード書き込み失敗時は無視
+      }
+    }
+
+    if (typeof liff !== "undefined" && liff.isInClient()) {
+      try {
+        await liff.sendMessages([{ type: "text", text: shareMessage }]);
+        alert("トーク画面に共有URLを送信しました！");
+        return;
+      } catch (e) {
+        console.warn("LIFF sendMessages fallback to URL share:", e);
+      }
+    }
+
+    if (lineSchemeUrl.length > MAX_LINE_SHARE_URL_LENGTH) {
+      alert("共有URLが長いためクリップボードにコピーしました。LINEのトーク画面に貼り付けて送信してください。");
+      return;
+    }
+
+    window.location.href = lineSchemeUrl;
+  }
+
+  function openInExternalBrowser() {
+    const transferPayload = buildSharePayload({ includeMembers: true, compactForShare: false });
     const url = new URL(window.location.href);
     url.searchParams.set("openExternalBrowser", "1");
     const encodedState = encodeStateToHash(transferPayload);
@@ -944,20 +1056,7 @@
   }
 
   function saveSessionState() {
-    const pairSameSub = document.getElementById("pair-same-sub")
-      ? document.getElementById("pair-same-sub").checked
-      : true;
-
-    const payload = {
-      selectedMemberIds: Array.from(selectedMemberIds),
-      guests,
-      guestCounter,
-      teamCount,
-      pairSameSub,
-      roundHistory,
-      currentRound,
-      lastRenderedContext
-    };
+    const payload = buildSharePayload({ includeMembers: false, compactForShare: false });
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
   }
 
@@ -2348,21 +2447,6 @@
     navigator.clipboard.writeText(lastResultText).then(() => {
       alert("結果をコピーしました！LINEのトークに貼り付けてください。");
     });
-  }
-
-  async function shareToLine() {
-    if (!lastResultText) return;
-    if (typeof liff !== "undefined" && liff.isInClient()) {
-      try {
-        await liff.sendMessages([{ type: "text", text: lastResultText }]);
-        alert("トーク画面に結果を送信しました！");
-        return;
-      } catch (e) {
-        console.warn("LIFF sendMessages fallback to URL share:", e);
-      }
-    }
-    const encoded = encodeURIComponent(lastResultText);
-    window.location.href = `https://line.me/R/share?text=${encoded}`;
   }
 
   // --- メンバー登録・編集関連 ---
