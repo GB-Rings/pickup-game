@@ -578,7 +578,7 @@
 <!-- LINE内ブラウザ向け：外部ブラウザで開くバナー -->
 <div id="top-external-browser-banner" class="ext-browser-banner hidden">
   <div class="ext-browser-card">
-    <span>LINE内ブラウザ表示中（外部ブラウザ推奨）</span>
+    <span>LINE内ブラウザ表示中<br>（外部ブラウザ推奨）</span>
     <button class="btn btn-outline btn-sm" style="white-space:nowrap;" onclick="openInExternalBrowser()">🌐 ブラウザで開く</button>
   </div>
 </div>
@@ -812,10 +812,83 @@
     }
   }
 
+  function encodeStateToHash(payload) {
+    try {
+      const jsonStr = JSON.stringify(payload);
+      const bytes = new TextEncoder().encode(jsonStr);
+      let binStr = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binStr += String.fromCharCode(bytes[i]);
+      }
+      return encodeURIComponent(btoa(binStr));
+    } catch (e) {
+      console.warn("Failed to encode state to hash:", e);
+      return "";
+    }
+  }
+
+  function decodeStateFromHash() {
+    try {
+      const hash = window.location.hash || "";
+      const match = hash.match(/state=([^&]+)/);
+      if (!match) return null;
+      const binStr = atob(decodeURIComponent(match[1]));
+      const bytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) {
+        bytes[i] = binStr.charCodeAt(i);
+      }
+      const jsonStr = new TextDecoder().decode(bytes);
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      console.warn("Failed to decode state from hash:", e);
+      return null;
+    }
+  }
+
+  function applyImportedSessionState(saved) {
+    if (!saved || typeof saved !== "object") return;
+    const validIds = new Set(members.map(m => m.id));
+    selectedMemberIds = new Set(
+      (saved.selectedMemberIds || []).filter(id => validIds.has(id))
+    );
+    guests = Array.isArray(saved.guests) ? saved.guests : [];
+    guestCounter = typeof saved.guestCounter === "number" ? saved.guestCounter : 1;
+    teamCount = [2, 3, 4].includes(saved.teamCount) ? saved.teamCount : 2;
+    roundHistory = Array.isArray(saved.roundHistory) ? saved.roundHistory : [];
+    currentRound = typeof saved.currentRound === "number" ? saved.currentRound : 0;
+    lastRenderedContext = saved.lastRenderedContext || null;
+
+    if (document.getElementById("pair-same-sub") && typeof saved.pairSameSub === "boolean") {
+      document.getElementById("pair-same-sub").checked = saved.pairSameSub;
+    }
+    [2, 3, 4].forEach(n => {
+      const btn = document.getElementById(`tbtn-${n}`);
+      if (btn) btn.classList.toggle("active", n === teamCount);
+    });
+  }
+
   function openInExternalBrowser() {
+    const pairSameSub = document.getElementById("pair-same-sub")
+      ? document.getElementById("pair-same-sub").checked
+      : true;
+
+    const transferPayload = {
+      selectedMemberIds: Array.from(selectedMemberIds),
+      guests,
+      guestCounter,
+      teamCount,
+      pairSameSub,
+      roundHistory,
+      currentRound,
+      lastRenderedContext
+    };
+
     const url = new URL(window.location.href);
     url.searchParams.set("openExternalBrowser", "1");
-    url.searchParams.set("_t", String(Date.now()));
+    const encodedState = encodeStateToHash(transferPayload);
+    if (encodedState) {
+      url.hash = `state=${encodedState}`;
+    }
     window.location.href = url.toString();
   }
 
@@ -830,6 +903,16 @@
 
     loadMembers();
     loadSessionState();
+
+    const hashState = decodeStateFromHash();
+    if (hashState) {
+      applyImportedSessionState(hashState);
+      saveSessionState();
+      if (history.replaceState) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    }
+
     renderAll();
 
     if (LIFF_ID && typeof liff !== "undefined") {
@@ -875,24 +958,7 @@
     if (!raw) return;
     try {
       const saved = JSON.parse(raw);
-      const validIds = new Set(members.map(m => m.id));
-      selectedMemberIds = new Set(
-        (saved.selectedMemberIds || []).filter(id => validIds.has(id))
-      );
-      guests = Array.isArray(saved.guests) ? saved.guests : [];
-      guestCounter = typeof saved.guestCounter === "number" ? saved.guestCounter : 1;
-      teamCount = [2, 3, 4].includes(saved.teamCount) ? saved.teamCount : 2;
-      roundHistory = Array.isArray(saved.roundHistory) ? saved.roundHistory : [];
-      currentRound = typeof saved.currentRound === "number" ? saved.currentRound : 0;
-      lastRenderedContext = saved.lastRenderedContext || null;
-
-      if (document.getElementById("pair-same-sub") && typeof saved.pairSameSub === "boolean") {
-        document.getElementById("pair-same-sub").checked = saved.pairSameSub;
-      }
-      [2, 3, 4].forEach(n => {
-        const btn = document.getElementById(`tbtn-${n}`);
-        if (btn) btn.classList.toggle("active", n === teamCount);
-      });
+      applyImportedSessionState(saved);
     } catch (e) {
       console.warn("Failed to restore session state:", e);
     }
@@ -1438,10 +1504,6 @@
     return teams[teamIdx].length > minOnCourt;
   }
 
-  // =========================================================================
-  // 「同カテゴリ隣り合い」＋「コート上メンバーのバランス（大男全抜け・女性ビギナー過半数回避）」
-  // =========================================================================
-
   function countAdjacentSame(roles) {
     const n = roles.length;
     if (n <= 1) return 0;
@@ -1455,10 +1517,6 @@
     return adj;
   }
 
-  /**
-   * チーム内の役割順 slots と現在のカーソル cursor、出場人数 onCourtCount から
-   * 「実際にコート上に残るメンバー」と「ベンチに下がるメンバー」を返す
-   */
   function splitOnCourtAndBench(slots, cursor, onCourtCount) {
     const n = slots.length;
     if (n === 0) return { onCourt: [], bench: [] };
@@ -1482,11 +1540,6 @@
     return list.filter(r => r === targetRole).length;
   }
 
-  /**
-   * コート上のメンバーバランスに対するペナルティ
-   * - チーム内に bm（大男）がいるのに、コート上の bm が 0人 になるのを強く防ぐ
-   * - コート上の fm（女性）+ b（ビギナー）が半数以上（例：4人中3人以上）になるのを強く防ぐ
-   */
   function calcOnCourtBalancePenalty(onCourt, totalTeamCounts) {
     if (!onCourt || onCourt.length === 0) return 0;
     let penalty = 0;
@@ -1498,24 +1551,20 @@
     const courtNorm = countRoleInList(onCourt, "normal");
     const courtFmPlusB = courtFm + courtB;
 
-    // 1. チームに大男がいるのに、コート上に大男が0人になる（＝大男が全員同時に抜ける）
     const teamHasBm = (totalTeamCounts.bm || 0) > 0;
     if (teamHasBm && courtBm === 0) {
       penalty += 4500;
     }
 
-    // 2. 女性＋ビギナーがコート上の半数以上（例：4人なら3人以上、5人なら3人以上）
     const halfThreshold = Math.floor(courtSize / 2) + 1;
     if (courtFmPlusB >= halfThreshold) {
       penalty += 3500 + (courtFmPlusB - halfThreshold + 1) * 1200;
     }
 
-    // 3. 大男と女性/ビギナーの偏りバランス（大男が1人しかいない場合、女性/ビギナーと同時出場しすぎないよう微調整）
     if (courtBm === 0 && courtFmPlusB >= Math.ceil(courtSize / 2)) {
       penalty += 900;
     }
 
-    // 4. 同じカテゴリがコート上に極端に偏るのを抑える
     const maxSameOnCourt = Math.max(courtBm, courtFm, courtB, courtNorm);
     if (maxSameOnCourt >= Math.ceil(courtSize * 0.75)) {
       penalty += 500;
@@ -1650,11 +1699,9 @@
           const splitA = splitOnCourtAndBench(sA, t * subA, courtSize);
           const splitB = splitOnCourtAndBench(sB, t * subB, courtSize);
 
-          // コート上のバランス（大男全抜け・女性ビギナー過半数回避）を評価
           cost += calcOnCourtBalancePenalty(splitA.onCourt, countsA);
           cost += calcOnCourtBalancePenalty(splitB.onCourt, countsB);
 
-          // 交代（ベンチ）メンバーのカテゴリ均衡も評価
           if (subA > 0 || subB > 0) {
             CATEGORIES.forEach(c => {
               const outACnt = countRoleInList(splitA.bench, c);
@@ -1664,7 +1711,6 @@
             });
           }
 
-          // 同じターンでコートに出る2チームの戦力差も抑える
           CATEGORIES.forEach(c => {
             const onACnt = countRoleInList(splitA.onCourt, c);
             const onBCnt = countRoleInList(splitB.onCourt, c);
@@ -1740,11 +1786,9 @@
           const splitJ = splitOnCourtAndBench(chosenSlots[j], cursors[j], courtSize);
           cursors[j] += subJ;
 
-          // 出場メンバー（コート上）のバランスを評価
           matchDiffScore += calcOnCourtBalancePenalty(splitI.onCourt, teamCountsList[i]);
           matchDiffScore += calcOnCourtBalancePenalty(splitJ.onCourt, teamCountsList[j]);
 
-          // 交代メンバーのカテゴリ差を評価
           if (subI > 0 && subI === subJ) {
             CATEGORIES.forEach(c => {
               const outICnt = countRoleInList(splitI.bench, c);
@@ -1754,7 +1798,6 @@
             });
           }
 
-          // 対戦チーム同士のコート上戦力差も評価
           CATEGORIES.forEach(c => {
             const onICnt = countRoleInList(splitI.onCourt, c);
             const onJCnt = countRoleInList(splitJ.onCourt, c);
