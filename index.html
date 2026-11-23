@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GB-Rings チーム分け</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    :root {
+      --navy: #142850;
+      --navy-mid: #1e3a8a;
+      --navy-light: #eef2ff;
+      --gold: #f59e0b;
+      --gold-dark: #b45309;
+      --gold-light: #fffbeb;
+      --line-green: #06c755;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --bm-bg: #dbeafe;
+      --bm-text: #1e40af;
+      --fm-bg: #fce7f3;
+      --fm-text: #9d174d;
+      --b-bg: #fef3c7;
+      --b-text: #92400e;
+      --norm-bg: #e2e8f0;
+      --norm-text: #334155;
+      --sub-bg: #fffbeb;
+      --sub-border: #fcd34d;
+      --bibs-on-bg: #e0e7ff;
+      --bibs-on-text: #142850;
+      --bibs-sub-bg: #fef3c7;
+      --bibs-sub-text: #b45309;
+      --bibs-off-bg: #f1f5f9;
+      --bibs-off-text: #475569;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 48px;
+    }
+    header {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+      color: #fff;
+      padding: 16px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 6px rgba(20, 40, 80, 0.25);
+      border-bottom: 3px solid var(--gold);
+    }
+
+    /* 合言葉ロック画面 */
+    .lock-screen {
+      max-width: 420px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    .lock-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px 18px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      border: 1px solid #cbd5e1;
+      text-align: center;
+    }
+    .lock-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .lock-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .lock-error {
+      color: #b91c1c;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      color: var(--muted);
+      transition: all 0.15s ease;
+    }
+    .tab.active {
+      color: var(--navy);
+      border-bottom-color: var(--gold);
+      background: #f8fafc;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .card-title {
+      font-weight: bold;
+      font-size: 15px;
+      margin: 0 0 10px 0;
+      color: var(--navy);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* カテゴリ画像アイコン */
+    .cat-icon-img {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
+      margin-left: 4px;
+      border-radius: 5px;
+      object-fit: contain;
+    }
+    .cat-icon-sub {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+      margin-left: 2px;
+      border-radius: 4px;
+      object-fit: contain;
+      opacity: 0.9;
+    }
+    .cat-icon-sm {
+      display: inline-block;
+      width: 19px;
+      height: 19px;
+      vertical-align: middle;
+      margin-left: 3px;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+    .stat-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #475569;
+      font-weight: bold;
+    }
+    .stat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .bibs-tag {
+      display: inline-block;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .bibs-on { background: var(--bibs-on-bg); color: var(--bibs-on-text); border: 1px solid #93c5fd; }
+    .bibs-sub { background: var(--bibs-sub-bg); color: var(--bibs-sub-text); border: 1px solid #fcd34d; }
+    .bibs-off { background: var(--bibs-off-bg); color: var(--bibs-off-text); border: 1px solid #cbd5e1; }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.15s ease;
+      text-decoration: none;
+    }
+    .btn:active { opacity: 0.85; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+      color: #fff;
+      width: 100%;
+      font-size: 16px;
+      padding: 14px;
+      border-bottom: 3px solid var(--gold);
+    }
+    .btn-swap {
+      background: #fffbeb;
+      border: 1px solid var(--gold);
+      color: var(--gold-dark);
+    }
+    .btn-line { background: var(--line-green); color: #fff; width: 100%; font-size: 15px; padding: 12px; }
+    .btn-image { background: var(--navy); color: #fff; width: 100%; font-size: 15px; padding: 12px; }
+    .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--navy); }
+    .btn-sm { padding: 6px 8px; font-size: 12px; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+
+    .member-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 4px;
+      border-bottom: 1px solid #f1f5f9;
+      gap: 8px;
+    }
+    .member-row:last-child { border-bottom: none; }
+    .member-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .member-check input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--navy);
+    }
+
+    /* メンバー編集フォーム（インライン） */
+    .edit-member-box {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .edit-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--navy);
+      margin: 6px 0 4px 0;
+    }
+
+    .guest-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .guest-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .guest-item input[type="text"] {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .team-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .team-btn {
+      flex: 1;
+      padding: 10px 4px;
+      border: 2px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .team-btn.active {
+      border-color: var(--navy);
+      background: var(--navy-light);
+      color: var(--navy);
+      box-shadow: inset 0 -2px 0 var(--gold);
+    }
+    .team-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: #f8fafc;
+    }
+
+    .option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+      border-top: 1px dashed #cbd5e1;
+      margin-top: 6px;
+    }
+    .option-row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .option-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--navy);
+    }
+
+    .round-banner {
+      background: var(--navy-light);
+      border: 1px solid #c7d2fe;
+      color: var(--navy);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .rest-note {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .cycle-note {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .history-box {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .history-title {
+      font-weight: bold;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .history-round {
+      padding: 6px 8px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-top: 6px;
+    }
+    .history-round-label {
+      font-weight: bold;
+      color: var(--navy-mid);
+      margin-bottom: 3px;
+    }
+    .history-team-line {
+      line-height: 1.5;
+      color: #334155;
+      padding-left: 4px;
+    }
+
+    .result-box {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid var(--navy);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .result-team-header {
+      font-weight: bold;
+      font-size: 16px;
+      color: var(--navy);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .result-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .no-sub-pill {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    .sub-rule-caption {
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--gold-dark);
+    }
+    .roster-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .roster-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+    .roster-item.has-order {
+      background: var(--sub-bg);
+      border-color: #fde68a;
+    }
+    .roster-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .order-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--navy);
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 0 6px;
+    }
+
+    .image-preview-box {
+      margin-top: 12px;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .image-preview-box img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      display: block;
+      margin: 0 auto 10px auto;
+    }
+    .image-help-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 6px; color: var(--navy); }
+    .form-control {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .cat-radios {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .cat-radios label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 9px 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #fff;
+    }
+    .cat-radios input[type="radio"] {
+      accent-color: var(--navy);
+      width: 15px;
+      height: 15px;
+    }
+    .hidden { display: none !important; }
+    .summary-bar {
+      font-size: 13px;
+      color: var(--navy);
+      background: var(--navy-light);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-weight: bold;
+      border-left: 4px solid var(--gold);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<header>🏀 GB-Rings 🏀</header>
+
+<!-- 合言葉ロック画面 -->
+<div id="lock-screen" class="lock-screen">
+  <div class="lock-card">
+    <div class="lock-title">🔒 メンバー限定ページ</div>
+    <div class="lock-desc">
+      GB-RingsのLINEグループで共有された<br />合言葉を入力してください。
+    </div>
+    <div class="form-group" style="text-align:left;">
+      <input type="password" id="passcode-input" class="form-control" placeholder="合言葉を入力" onkeydown="if(event.key==='Enter') unlockApp()" />
+    </div>
+    <button class="btn btn-primary" onclick="unlockApp()">入室する</button>
+    <div id="lock-error" class="lock-error hidden">合言葉が違います。もう一度確認してください。</div>
+  </div>
+</div>
+
+<!-- アプリ本体 -->
+<div id="app-main" class="hidden">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('game')">① チーム分け</div>
+    <div class="tab" onclick="switchTab('members')">② メンバー登録</div>
+  </div>
+
+  <!-- タブ1: チーム分け -->
+  <div id="tab-game" class="container">
+    <div class="summary-bar" id="summary-bar">参加予定: 0人</div>
+
+    <!-- 登録メンバー選択 -->
+    <div class="card">
+      <div class="card-title">
+        <span>登録メンバーから選択</span>
+        <div>
+          <button class="btn btn-outline btn-sm" onclick="toggleAllMembers(true)">全選択</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleAllMembers(false)">解除</button>
+        </div>
+      </div>
+      <div id="game-member-list"></div>
+    </div>
+
+    <!-- ゲスト追加 -->
+    <div class="card">
+      <div class="card-title">
+        <span>ゲスト</span>
+        <button class="btn btn-outline btn-sm" onclick="clearGuests()">クリア</button>
+      </div>
+      <div class="guest-buttons">
+        <button class="btn btn-outline btn-sm" onclick="addGuest('normal')">＋ <span id="gbtn-normal"></span></button>
+        <button class="btn btn-outline btn-sm" onclick="addGuest('bm')">＋ <span id="gbtn-bm"></span></button>
+        <button class="btn btn-outline btn-sm" onclick="addGuest('fm')">＋ <span id="gbtn-fm"></span></button>
+        <button class="btn btn-outline btn-sm" onclick="addGuest('b')">＋ <span id="gbtn-b"></span></button>
+      </div>
+      <div id="guest-list"></div>
+    </div>
+
+    <!-- チーム数・抜け番ルール・実行 -->
+    <div class="card">
+      <div class="card-title">チーム数を選択</div>
+      <div class="team-selector" id="team-selector">
+        <button class="team-btn active" id="tbtn-2" onclick="selectTeamCount(2)">2チーム</button>
+        <button class="team-btn" id="tbtn-3" onclick="selectTeamCount(3)">3チーム</button>
+        <button class="team-btn" id="tbtn-4" onclick="selectTeamCount(4)">4チーム</button>
+      </div>
+
+      <div class="option-row">
+        <label>
+          <input type="checkbox" id="pair-same-sub" checked onchange="saveSessionState()" />
+          <span>調整あり</span>
+        </label>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <button class="btn btn-primary" id="run-btn" onclick="generateTeams(false)">🎲 チーム分け開始</button>
+      </div>
+    </div>
+
+    <!-- 結果表示 -->
+    <div id="result-area" class="card hidden">
+      <div class="card-title">
+        <span>🏀 GB-Rings 🏀 チーム分け結果</span>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-swap btn-sm" id="swap-btn" onclick="generateTeams(true)">🔀 チーム替え</button>
+          <button class="btn btn-outline btn-sm" onclick="generateTeams(false)">🔄 再抽選</button>
+          <button class="btn btn-danger btn-sm" onclick="resetSessionState()">🗑 リセット</button>
+        </div>
+      </div>
+      <div class="round-banner" id="round-banner">1回戦</div>
+      <div class="rest-note hidden" id="rest-note">※まだ休憩していない人がいれば要調整</div>
+      <div class="cycle-note hidden" id="cycle-note"></div>
+      <div id="result-teams"></div>
+      <div id="history-area" class="history-box hidden"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+        <button class="btn btn-image" onclick="createAndShareResultImage()">📸 結果画像を作成・共有</button>
+        <button class="btn btn-line" onclick="shareToLine()">LINEに結果を送信・共有</button>
+        <button class="btn btn-outline" onclick="copyResult()">📋 テキストをコピー</button>
+      </div>
+
+      <div id="image-preview-box" class="image-preview-box hidden">
+        <div class="image-help-text">
+          1枚にまとめた結果画像です。共有画面が開かない場合は、画像を長押し保存（またはダウンロード）してLINEに貼ってください。
+        </div>
+        <img id="result-image-preview" alt="チーム分け結果画像" />
+        <a id="download-image-link" class="btn btn-outline btn-sm" download="gb-rings-teams.png">💾 画像をダウンロード</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- タブ2: メンバー登録 -->
+  <div id="tab-members" class="container hidden">
+    <div class="card">
+      <div class="card-title">新規メンバー登録</div>
+      <div class="form-group">
+        <label>名前</label>
+        <input type="text" id="new-name" class="form-control" placeholder="例：田中" />
+      </div>
+      <div class="form-group">
+        <label>メインカテゴリ</label>
+        <div class="cat-radios">
+          <label><input type="radio" name="new-cat" value="normal" checked /> <span id="rcat-normal"></span></label>
+          <label><input type="radio" name="new-cat" value="bm" /> <span id="rcat-bm"></span></label>
+          <label><input type="radio" name="new-cat" value="fm" /> <span id="rcat-fm"></span></label>
+          <label><input type="radio" name="new-cat" value="b" /> <span id="rcat-b"></span></label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>サブカテゴリ（任意）</label>
+        <div class="cat-radios">
+          <label><input type="radio" name="new-subcat" value="" checked /> <span>なし</span></label>
+          <label><input type="radio" name="new-subcat" value="bm" /> <span id="rsub-bm"></span></label>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="registerMember()">＋ リストに追加</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">登録済みメンバー一覧（<span id="reg-count">0</span>人）</div>
+      <div id="reg-member-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">データの引き継ぎ・共有（他メンバー用）</div>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 0;">
+        登録データはこのスマホ内に保存されます。グループ内の別メンバーのスマホに同じリストを渡す場合は書き出してLINEノート等に貼ってください。
+      </p>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="exportMembers()">📤 データを書き出す</button>
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="importMembers()">📥 データを読み込む</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const APP_PASSCODE = "123gb";
+  const AUTH_STORAGE_KEY = "gbrings_unlocked_123gb_v1";
+  const LIFF_ID = "";
+  const STORAGE_KEY = "basketball_team_members_v4";
+  const SESSION_STORAGE_KEY = "gbrings_session_state_v2";
+  const CATEGORIES = ["bm", "fm", "b", "normal"];
+  const SUB_CATEGORIES = ["bm"];
+
+  const CATEGORY_ICON_SVG = {
+    bm: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" fill="#1d4ed8" stroke="#1e3a8a" stroke-width="1"/>
+      <text x="16" y="21.5" font-family="Arial, sans-serif" font-size="14" font-weight="900" text-anchor="middle" fill="#ffffff" letter-spacing="0.5">XL</text>
+    </svg>`,
+    fm: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" fill="#fce7f3"/>
+      <circle cx="16" cy="11" r="4.5" fill="#db2777"/>
+      <path d="M10 25l3-8h6l3 8H10z" fill="#9d174d"/>
+    </svg>`,
+    b: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+      <path d="M16 26V14" stroke="#059669" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M16 16c-5.5 0-9-3.5-9-8 4.8 0 9 2.7 9 8z" fill="#34d399" stroke="#059669" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M16 14c1-5.2 4.8-8.2 9.5-8.2 0 5-3.5 8.2-9.5 8.2z" fill="#6ee7b7" stroke="#059669" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>`,
+    normal: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" fill="#e2e8f0"/>
+      <circle cx="16" cy="11" r="4" fill="#334155"/>
+      <rect x="11" y="16" width="10" height="10" rx="4" fill="#475569"/>
+    </svg>`,
+    guest: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
+      <text x="16" y="21" font-size="14" font-weight="bold" text-anchor="middle" fill="#854d0e">G</text>
+    </svg>`
+  };
+
+  function getCategoryIconUrl(key) {
+    const svg = CATEGORY_ICON_SVG[key] || CATEGORY_ICON_SVG.normal;
+    return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+  }
+
+  let members = [];
+  let selectedMemberIds = new Set();
+  let guests = [];
+  let guestCounter = 1;
+  let teamCount = 2;
+  let lastResultText = "";
+  let editingMemberId = null;
+
+  let roundHistory = [];
+  let currentRound = 0;
+  let lastRenderedContext = null;
+
+  const canvasIconCache = {};
+
+  function preloadCanvasIcons() {
+    ["bm", "fm", "b", "normal", "guest"].forEach(key => {
+      const img = new Image();
+      img.src = getCategoryIconUrl(key);
+      canvasIconCache[key] = img;
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    preloadCanvasIcons();
+    initStaticCategoryIcons();
+
+    if (localStorage.getItem(AUTH_STORAGE_KEY) === APP_PASSCODE) {
+      showMainApp();
+    }
+
+    loadMembers();
+    loadSessionState();
+    renderAll();
+
+    if (LIFF_ID && typeof liff !== "undefined") {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+      } catch (e) {
+        console.warn("LIFF init skipped:", e);
+      }
+    }
+  });
+
+  function initStaticCategoryIcons() {
+    ["normal", "bm", "fm", "b"].forEach(cat => {
+      const gEl = document.getElementById(`gbtn-${cat}`);
+      if (gEl) gEl.innerHTML = `<img class="cat-icon-sm" src="${getCategoryIconUrl(cat)}" alt="${cat}" />`;
+      const rEl = document.getElementById(`rcat-${cat}`);
+      if (rEl) rEl.innerHTML = `<img class="cat-icon-img" src="${getCategoryIconUrl(cat)}" alt="${cat}" />`;
+    });
+    const sBmEl = document.getElementById("rsub-bm");
+    if (sBmEl) sBmEl.innerHTML = `<img class="cat-icon-sub" src="${getCategoryIconUrl("bm")}" alt="sub-bm" />`;
+  }
+
+  function saveSessionState() {
+    const pairSameSub = document.getElementById("pair-same-sub")
+      ? document.getElementById("pair-same-sub").checked
+      : true;
+
+    const payload = {
+      selectedMemberIds: Array.from(selectedMemberIds),
+      guests,
+      guestCounter,
+      teamCount,
+      pairSameSub,
+      roundHistory,
+      currentRound,
+      lastRenderedContext
+    };
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+  }
+
+  function loadSessionState() {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      const validIds = new Set(members.map(m => m.id));
+      selectedMemberIds = new Set(
+        (saved.selectedMemberIds || []).filter(id => validIds.has(id))
+      );
+      guests = Array.isArray(saved.guests) ? saved.guests : [];
+      guestCounter = typeof saved.guestCounter === "number" ? saved.guestCounter : 1;
+      teamCount = [2, 3, 4].includes(saved.teamCount) ? saved.teamCount : 2;
+      roundHistory = Array.isArray(saved.roundHistory) ? saved.roundHistory : [];
+      currentRound = typeof saved.currentRound === "number" ? saved.currentRound : 0;
+      lastRenderedContext = saved.lastRenderedContext || null;
+
+      if (document.getElementById("pair-same-sub") && typeof saved.pairSameSub === "boolean") {
+        document.getElementById("pair-same-sub").checked = saved.pairSameSub;
+      }
+      [2, 3, 4].forEach(n => {
+        const btn = document.getElementById(`tbtn-${n}`);
+        if (btn) btn.classList.toggle("active", n === teamCount);
+      });
+    } catch (e) {
+      console.warn("Failed to restore session state:", e);
+    }
+  }
+
+  function resetSessionState() {
+    if (!confirm("選択状態・ゲスト・現在のチーム分け結果と履歴をリセットしますか？")) return;
+    selectedMemberIds.clear();
+    guests = [];
+    guestCounter = 1;
+    teamCount = 2;
+    roundHistory = [];
+    currentRound = 0;
+    lastRenderedContext = null;
+    lastResultText = "";
+
+    [2, 3, 4].forEach(n => {
+      const btn = document.getElementById(`tbtn-${n}`);
+      if (btn) btn.classList.toggle("active", n === 2);
+    });
+
+    const resArea = document.getElementById("result-area");
+    if (resArea) resArea.classList.add("hidden");
+    const imgBox = document.getElementById("image-preview-box");
+    if (imgBox) imgBox.classList.add("hidden");
+
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    renderAll();
+  }
+
+  function unlockApp() {
+    const inputEl = document.getElementById("passcode-input");
+    const errEl = document.getElementById("lock-error");
+    const val = (inputEl.value || "").trim();
+
+    if (val === APP_PASSCODE) {
+      localStorage.setItem(AUTH_STORAGE_KEY, APP_PASSCODE);
+      errEl.classList.add("hidden");
+      showMainApp();
+    } else {
+      errEl.classList.remove("hidden");
+    }
+  }
+
+  function showMainApp() {
+    document.getElementById("lock-screen").classList.add("hidden");
+    document.getElementById("app-main").classList.remove("hidden");
+  }
+
+  function normalizeSubCategory(sub) {
+    return SUB_CATEGORIES.includes(sub) ? sub : "";
+  }
+
+  function loadMembers() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      members = JSON.parse(saved).map(m => ({
+        ...m,
+        subCategory: normalizeSubCategory(m.subCategory)
+      }));
+    } else {
+      members = [
+        { id: "m1", name: "サンプル太郎", category: "bm", subCategory: "" },
+        { id: "m2", name: "サンプル花子", category: "fm", subCategory: "" },
+        { id: "m3", name: "サンプルB", category: "b", subCategory: "" },
+        { id: "m4", name: "サンプル次郎", category: "normal", subCategory: "" }
+      ];
+      saveMembers();
+    }
+  }
+
+  function saveMembers() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll(".tab").forEach((el, idx) => {
+      el.classList.toggle("active", (tabName === "game" && idx === 0) || (tabName === "members" && idx === 1));
+    });
+    document.getElementById("tab-game").classList.toggle("hidden", tabName !== "game");
+    document.getElementById("tab-members").classList.toggle("hidden", tabName !== "members");
+    renderAll();
+  }
+
+  function renderCategoryIconsHtml(category, isGuest = false, subCategory = "", sizeClass = "cat-icon-img") {
+    let html = "";
+    if (isGuest) {
+      html += `<img class="${sizeClass}" src="${getCategoryIconUrl("guest")}" alt="ゲスト" title="ゲスト" />`;
+    }
+    const safeCat = CATEGORIES.includes(category) ? category : "normal";
+    html += `<img class="${sizeClass}" src="${getCategoryIconUrl(safeCat)}" alt="${safeCat}" title="${safeCat}" />`;
+    const safeSub = normalizeSubCategory(subCategory);
+    if (safeSub && safeSub !== safeCat) {
+      html += `<img class="cat-icon-sub" src="${getCategoryIconUrl(safeSub)}" alt="sub-${safeSub}" title="サブ:${safeSub}" />`;
+    }
+    return html;
+  }
+
+  function getResultDisplayCategory(person) {
+    if (person && person.assignedRole && CATEGORIES.includes(person.assignedRole)) {
+      return person.assignedRole;
+    }
+    return CATEGORIES.includes(person?.category) ? person.category : "normal";
+  }
+
+  function renderResultIconHtml(person, sizeClass = "cat-icon-img") {
+    let html = "";
+    if (person.isGuest) {
+      html += `<img class="${sizeClass}" src="${getCategoryIconUrl("guest")}" alt="ゲスト" title="ゲスト" />`;
+    }
+    const dispCat = getResultDisplayCategory(person);
+    html += `<img class="${sizeClass}" src="${getCategoryIconUrl(dispCat)}" alt="${dispCat}" title="${dispCat}" />`;
+    return html;
+  }
+
+  function renderAll() {
+    renderGameMembers();
+    renderGuests();
+    renderRegMembers();
+    updateSummaryAndControls();
+    restoreResultViewIfNeeded();
+  }
+
+  function restoreResultViewIfNeeded() {
+    if (!lastRenderedContext || !lastRenderedContext.teamResults || lastRenderedContext.teamResults.length === 0) {
+      return;
+    }
+    const { teamResults, effectiveTeamCount, roundNum } = lastRenderedContext;
+    currentRound = roundNum || currentRound || 1;
+    renderResults(teamResults, effectiveTeamCount, { scrollToResult: false, persist: false });
+  }
+
+  function renderGameMembers() {
+    const container = document.getElementById("game-member-list");
+    if (members.length === 0) {
+      container.innerHTML = `<p style="font-size:13px;color:#888;">「② メンバー登録」からメンバーを登録してください。</p>`;
+      return;
+    }
+    container.innerHTML = members.map(m => {
+      const checked = selectedMemberIds.has(m.id) ? "checked" : "";
+      return `
+        <div class="member-row">
+          <label class="member-check">
+            <input type="checkbox" ${checked} onchange="toggleMember('${m.id}', this.checked)" />
+            <span>${escapeHtml(m.name)}</span>
+            <span>${renderCategoryIconsHtml(m.category, false, m.subCategory)}</span>
+          </label>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function toggleMember(id, isChecked) {
+    if (isChecked) selectedMemberIds.add(id);
+    else selectedMemberIds.delete(id);
+    saveSessionState();
+    updateSummaryAndControls();
+  }
+
+  function toggleAllMembers(selectAll) {
+    if (selectAll) members.forEach(m => selectedMemberIds.add(m.id));
+    else selectedMemberIds.clear();
+    saveSessionState();
+    renderGameMembers();
+    updateSummaryAndControls();
+  }
+
+  function addGuest(category) {
+    const label = `ゲスト${guestCounter++}`;
+    guests.push({ id: "g_" + Date.now() + Math.random(), name: label, category, subCategory: "", isGuest: true });
+    saveSessionState();
+    renderGuests();
+    updateSummaryAndControls();
+  }
+
+  function removeGuest(id) {
+    guests = guests.filter(g => g.id !== id);
+    saveSessionState();
+    renderGuests();
+    updateSummaryAndControls();
+  }
+
+  function updateGuestName(id, newName) {
+    const g = guests.find(x => x.id === id);
+    if (g) {
+      g.name = newName;
+      saveSessionState();
+    }
+  }
+
+  function clearGuests() {
+    guests = [];
+    guestCounter = 1;
+    saveSessionState();
+    renderGuests();
+    updateSummaryAndControls();
+  }
+
+  function renderGuests() {
+    const container = document.getElementById("guest-list");
+    if (guests.length === 0) {
+      container.innerHTML = "";
+      return;
+    }
+    container.innerHTML = guests.map(g => `
+      <div class="guest-item">
+        <input type="text" value="${escapeHtml(g.name)}" onchange="updateGuestName('${g.id}', this.value)" />
+        <div>${renderCategoryIconsHtml(g.category, true, "")}</div>
+        <button class="btn btn-danger btn-sm" onclick="removeGuest('${g.id}')">削除</button>
+      </div>
+    `).join("");
+  }
+
+  function getActiveParticipants() {
+    const reg = members.filter(m => selectedMemberIds.has(m.id));
+    return [...reg, ...guests];
+  }
+
+  function countByCat(list, cat) {
+    return list.filter(p => p.category === cat).length;
+  }
+
+  function countByResultCat(list, cat) {
+    return list.filter(p => getResultDisplayCategory(p) === cat).length;
+  }
+
+  function countGuests(list) {
+    return list.filter(p => Boolean(p.isGuest)).length;
+  }
+
+  function renderStatCountsHtml(list, useResultRole = false) {
+    const counter = useResultRole ? countByResultCat : countByCat;
+    const bmCnt = counter(list, "bm");
+    const normCnt = counter(list, "normal");
+    const fmCnt = counter(list, "fm");
+    const bCnt = counter(list, "b");
+
+    return `
+      <span class="stat-group">
+        <span class="stat-item"><img class="cat-icon-sm" src="${getCategoryIconUrl("bm")}" alt="XL" />:${bmCnt}</span>
+        <span class="stat-item"><img class="cat-icon-sm" src="${getCategoryIconUrl("normal")}" alt="一般" />:${normCnt}</span>
+        <span class="stat-item"><img class="cat-icon-sm" src="${getCategoryIconUrl("fm")}" alt="女性" />:${fmCnt}</span>
+        <span class="stat-item"><img class="cat-icon-sm" src="${getCategoryIconUrl("b")}" alt="B" />:${bCnt}</span>
+      </span>
+    `;
+  }
+
+  function updateSummaryAndControls() {
+    const active = getActiveParticipants();
+    const total = active.length;
+
+    const bar = document.getElementById("summary-bar");
+    const runBtn = document.getElementById("run-btn");
+
+    if (total === 0) {
+      bar.innerHTML = `<span>参加予定: 0人</span> ${renderStatCountsHtml(active, false)} <span>メンバーまたはゲストを選択してください</span>`;
+      runBtn.disabled = true;
+      runBtn.textContent = "メンバーを選択してください";
+    } else {
+      bar.innerHTML = `<span>参加予定: ${total}人</span> ${renderStatCountsHtml(active, false)}`;
+      runBtn.disabled = false;
+      runBtn.textContent = "🎲 チーム分け開始";
+    }
+
+    const allow3 = total >= 3;
+    const allow4 = total >= 4;
+
+    document.getElementById("tbtn-2").disabled = total < 2;
+    document.getElementById("tbtn-3").disabled = !allow3;
+    document.getElementById("tbtn-4").disabled = !allow4;
+
+    if (total < 2) {
+      selectTeamCount(2, false);
+    } else if ((teamCount === 3 && !allow3) || (teamCount === 4 && !allow4)) {
+      selectTeamCount(allow3 ? 3 : 2, false);
+    }
+  }
+
+  function selectTeamCount(count, resetRoundsIfChanged = true) {
+    const changed = teamCount !== count;
+    teamCount = count;
+    [2, 3, 4].forEach(n => {
+      document.getElementById(`tbtn-${n}`).classList.toggle("active", n === count);
+    });
+    if (changed && resetRoundsIfChanged) {
+      roundHistory = [];
+      currentRound = 0;
+      lastRenderedContext = null;
+    }
+    saveSessionState();
+  }
+
+  function shuffle(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function buildCoOccurrenceMap(historyRounds) {
+    const pairCount = new Map();
+    const makeKey = (a, b) => (a < b ? `${a}__${b}` : `${b}__${a}`);
+
+    historyRounds.forEach(roundTeams => {
+      roundTeams.forEach(team => {
+        const ids = team.map(p => p.id);
+        for (let i = 0; i < ids.length; i++) {
+          for (let j = i + 1; j < ids.length; j++) {
+            const k = makeKey(ids[i], ids[j]);
+            pairCount.set(k, (pairCount.get(k) || 0) + 1);
+          }
+        }
+      });
+    });
+
+    return { pairCount, makeKey };
+  }
+
+  function computeTeamCapacities(totalCount, count) {
+    const base = Math.floor(totalCount / count);
+    const remainder = totalCount % count;
+    const caps = Array.from({ length: count }, (_, idx) => base + (idx < remainder ? 1 : 0));
+    return shuffle(caps);
+  }
+
+  function prioritizeNonGuestTeamsForBibs(teams) {
+    if (!teams || teams.length <= 1) return teams;
+
+    const bibsSlotOrder = teams.length === 2 ? [0, 1] : [0, 2, 1, 3].slice(0, teams.length);
+
+    const rankedTeams = teams
+      .map(t => ({
+        team: t,
+        guestCnt: countGuests(t),
+        tie: Math.random()
+      }))
+      .sort((a, b) => {
+        if (a.guestCnt !== b.guestCnt) return a.guestCnt - b.guestCnt;
+        return a.tie - b.tie;
+      });
+
+    const arranged = new Array(teams.length);
+    rankedTeams.forEach((item, rankIdx) => {
+      const targetSlot = bibsSlotOrder[rankIdx] ?? rankIdx;
+      arranged[targetSlot] = item.team;
+    });
+
+    return arranged;
+  }
+
+  function runSingleAllocation(participants, count, capacities, isSwapMode, pairCount, makeKey) {
+    const teams = Array.from({ length: count }, () => []);
+    const hasCapacity = (idx) => teams[idx].length < capacities[idx];
+    let totalPairRepeats = 0;
+
+    const rarityOrder = { bm: 0, fm: 1, b: 2, normal: 3 };
+    const orderedPool = shuffle(participants).sort((a, b) => {
+      const aHasSub = normalizeSubCategory(a.subCategory) ? 1 : 0;
+      const bHasSub = normalizeSubCategory(b.subCategory) ? 1 : 0;
+      if (aHasSub !== bHasSub) return aHasSub - bHasSub;
+      return (rarityOrder[a.category] ?? 9) - (rarityOrder[b.category] ?? 9);
+    });
+
+    const calcTeamSpreadCost = (candTeams) => {
+      let cost = 0;
+      CATEGORIES.forEach(cat => {
+        const counts = candTeams.map(t => countByResultCat(t, cat));
+        const maxC = Math.max(...counts);
+        const minC = Math.min(...counts);
+        const weight = cat === "bm" ? 55 : cat === "fm" || cat === "b" ? 45 : 30;
+        cost += (maxC - minC) * weight;
+      });
+      return cost;
+    };
+
+    orderedPool.forEach(person => {
+      const openIndices = teams.map((_, idx) => idx).filter(idx => hasCapacity(idx));
+      if (openIndices.length === 0) return;
+
+      const safeSub = normalizeSubCategory(person.subCategory);
+      const hasValidSub = Boolean(safeSub && safeSub !== person.category);
+      const candidateRoles = hasValidSub ? [person.category, safeSub] : [person.category];
+
+      let bestIdx = openIndices[0];
+      let bestRole = person.category;
+      let bestScore = Infinity;
+
+      openIndices.forEach(idx => {
+        let repeatCnt = 0;
+        if (isSwapMode) {
+          teams[idx].forEach(mate => {
+            repeatCnt += pairCount.get(makeKey(person.id, mate.id)) || 0;
+          });
+        }
+
+        candidateRoles.forEach(role => {
+          const placedPerson = { ...person, assignedRole: role };
+          teams[idx].push(placedPerson);
+          const spreadCost = calcTeamSpreadCost(teams);
+          const localSameRole = countByResultCat(teams[idx], role);
+          teams[idx].pop();
+
+          const roleBias = role === person.category ? 0 : 8;
+          const score =
+            spreadCost * 3 +
+            localSameRole * 18 +
+            roleBias +
+            (isSwapMode ? repeatCnt * 1500 : 0) +
+            Math.random() * 1.5;
+
+          if (score < bestScore) {
+            bestScore = score;
+            bestIdx = idx;
+            bestRole = role;
+          }
+        });
+      });
+
+      if (isSwapMode) {
+        teams[bestIdx].forEach(mate => {
+          totalPairRepeats += pairCount.get(makeKey(person.id, mate.id)) || 0;
+        });
+      }
+      teams[bestIdx].push({
+        ...person,
+        assignedRole: bestRole
+      });
+    });
+
+    for (let pass = 0; pass < 15; pass++) {
+      let improved = false;
+      let curCost = calcTeamSpreadCost(teams) + (isSwapMode ? totalPairRepeats * 120 : 0);
+
+      for (let a = 0; a < count; a++) {
+        for (let b = a + 1; b < count; b++) {
+          for (let i = 0; i < teams[a].length; i++) {
+            for (let j = 0; j < teams[b].length; j++) {
+              const pA = teams[a][i];
+              const pB = teams[b][j];
+              teams[a][i] = pB;
+              teams[b][j] = pA;
+
+              let nextRepeats = 0;
+              if (isSwapMode) {
+                teams.forEach(t => {
+                  for (let x = 0; x < t.length; x++) {
+                    for (let y = x + 1; y < t.length; y++) {
+                      nextRepeats += pairCount.get(makeKey(t[x].id, t[y].id)) || 0;
+                    }
+                  }
+                });
+              }
+
+              const nextCost = calcTeamSpreadCost(teams) + (isSwapMode ? nextRepeats * 120 : 0);
+              if (nextCost < curCost - 1e-6) {
+                curCost = nextCost;
+                totalPairRepeats = nextRepeats;
+                improved = true;
+              } else {
+                teams[a][i] = pA;
+                teams[b][j] = pB;
+              }
+            }
+          }
+        }
+      }
+      if (!improved || curCost <= 0) break;
+    }
+
+    return {
+      teams,
+      qualityScore: (isSwapMode ? totalPairRepeats * 120 : 0) + calcTeamSpreadCost(teams)
+    };
+  }
+
+  function allocateParticipantsToTeams(participants, count, isSwapMode) {
+    const capacities = computeTeamCapacities(participants.length, count);
+    const { pairCount, makeKey } = buildCoOccurrenceMap(isSwapMode ? roundHistory : []);
+
+    const attempts = isSwapMode ? 500 : 350;
+    let bestResult = null;
+
+    for (let i = 0; i < attempts; i++) {
+      const candidate = runSingleAllocation(
+        participants,
+        count,
+        capacities,
+        isSwapMode,
+        pairCount,
+        makeKey
+      );
+      if (!bestResult || candidate.qualityScore < bestResult.qualityScore) {
+        bestResult = candidate;
+      }
+      if (bestResult.qualityScore <= 0) break;
+    }
+
+    const allocated = bestResult ? bestResult.teams : Array.from({ length: count }, () => []);
+    return prioritizeNonGuestTeamsForBibs(allocated);
+  }
+
+  function getMinOnCourtCount(teams) {
+    if (!teams || teams.length === 0) return 5;
+    const minSize = Math.min(...teams.map(t => t.length));
+    return Math.min(5, minSize);
+  }
+
+  function shouldDetermineSubOrder(teamIdx, teams) {
+    const minOnCourt = getMinOnCourtCount(teams);
+    return teams[teamIdx].length > minOnCourt;
+  }
+
+  // =========================================================================
+  // 「同カテゴリ隣り合い（1-2, 2-3...7-1）ゼロ」を絶対保証する順列生成
+  // =========================================================================
+
+  function countAdjacentSame(roles) {
+    const n = roles.length;
+    if (n <= 1) return 0;
+    let adj = 0;
+    for (let i = 0; i < n - 1; i++) {
+      if (roles[i] === roles[i + 1]) adj += 1;
+    }
+    if (n >= 3 && roles[n - 1] === roles[0]) {
+      adj += 1;
+    }
+    return adj;
+  }
+
+  // 隣り合う同カテゴリが1つもない順列を全列挙（必ず countAdjacentSame === 0 のもののみ返す）
+  function getStrictNoAdjacentArrangements(roleCounts) {
+    const total = Object.values(roleCounts).reduce((a, b) => a + b, 0);
+    if (total === 0) return [[]];
+
+    const rem = { ...roleCounts };
+    const current = new Array(total);
+    const strictList = [];
+
+    function backtrackStrict(depth) {
+      if (depth === total) {
+        if (countAdjacentSame(current) === 0) {
+          strictList.push([...current]);
+        }
+        return;
+      }
+
+      for (const cat of CATEGORIES) {
+        if ((rem[cat] || 0) <= 0) continue;
+        if (depth > 0 && current[depth - 1] === cat) continue;
+        if (depth === total - 1 && total >= 3 && current[0] === cat) continue;
+
+        rem[cat]--;
+        current[depth] = cat;
+        backtrackStrict(depth + 1);
+        rem[cat]++;
+      }
+    }
+
+    backtrackStrict(0);
+
+    // 厳密解（隣り合いゼロ）が存在する場合は100%それを返す
+    if (strictList.length > 0) {
+      return shuffle(strictList);
+    }
+
+    // 物理的に1つも隣り合いゼロが作れない極端な人数（例: 同じカテゴリが5人以上など）の場合のみ、
+    // 隣り合い回数が最小になる順列だけを返す
+    let minAdj = Infinity;
+    const bestPartial = [];
+    function backtrackBest(depth) {
+      if (depth === total) {
+        const adj = countAdjacentSame(current);
+        if (adj < minAdj) {
+          minAdj = adj;
+          bestPartial.length = 0;
+          bestPartial.push([...current]);
+        } else if (adj === minAdj) {
+          bestPartial.push([...current]);
+        }
+        return;
+      }
+      for (const cat of CATEGORIES) {
+        if ((rem[cat] || 0) <= 0) continue;
+        rem[cat]--;
+        current[depth] = cat;
+        backtrackBest(depth + 1);
+        rem[cat]++;
+      }
+    }
+    backtrackBest(0);
+    return shuffle(bestPartial);
+  }
+
+  function assignMembersToRoleSlots(team, roleSlots) {
+    const buckets = {};
+    CATEGORIES.forEach(c => {
+      buckets[c] = shuffle(team.filter(p => getResultDisplayCategory(p) === c));
+    });
+
+    const ordered = [];
+    const usedIds = new Set();
+
+    roleSlots.forEach(role => {
+      if (buckets[role] && buckets[role].length > 0) {
+        const picked = buckets[role].pop();
+        ordered.push(picked);
+        usedIds.add(picked.id);
+      }
+    });
+
+    team.forEach(p => {
+      if (!usedIds.has(p.id)) {
+        ordered.push(p);
+      }
+    });
+
+    return ordered;
+  }
+
+// 2チーム専用：
+  // ・両チームとも「隣り合い同カテゴリゼロ」を維持
+  // ・抜ける人数（subA, subB）が同じ場合も、ずれる場合（例：1人抜け vs 2人抜け）も、
+  //   複数ターンの抜け番カテゴリの偏り・ズレを最小化する並び順を選出
+  function optimizeTwoTeamsOrders(teamA, teamB, subA, subB) {
+    const countsA = {};
+    const countsB = {};
+    CATEGORIES.forEach(c => {
+      countsA[c] = countByResultCat(teamA, c);
+      countsB[c] = countByResultCat(teamB, c);
+    });
+
+    const validSlotsA = getStrictNoAdjacentArrangements(countsA);
+    const validSlotsB = getStrictNoAdjacentArrangements(countsB);
+
+    let bestSlotsA = validSlotsA[0] || [];
+    let bestSlotsB = validSlotsB[0] || [];
+    let bestPairCost = Infinity;
+
+    const lenA = teamA.length;
+    const lenB = teamB.length;
+    // 抜ける人数の最小公倍数（または最大12ターン）で周期を評価
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    const lcmTurns =
+      subA > 0 && subB > 0
+        ? Math.min(24, (subA * subB) / gcd(subA, subB) * Math.max(lenA, lenB))
+        : Math.max(lenA, lenB, 6);
+    const simTurns = Math.max(6, Math.min(24, Number.isFinite(lcmTurns) ? lcmTurns : 12));
+
+    const evalSlotAlignment = (sA, sB) => {
+      let cost = countAdjacentSame(sA) * 1000000 + countAdjacentSame(sB) * 1000000;
+      const minLen = Math.min(sA.length, sB.length);
+
+      // 同じ番号同士の一致度も軽く加味
+      for (let i = 0; i < minLen; i++) {
+        if (sA[i] !== sB[i]) {
+          cost += 200;
+        }
+      }
+
+      // 抜ける人数がずれるケース（subA !== subB）でも同じケースでも、
+      // 各ターンで抜けるカテゴリの構成差を最小化
+      if ((subA > 0 || subB > 0) && sA.length > 0 && sB.length > 0) {
+        for (let t = 0; t < simTurns; t++) {
+          const outA = {};
+          const outB = {};
+
+          for (let k = 0; k < subA; k++) {
+            const role = sA[(t * subA + k) % sA.length];
+            outA[role] = (outA[role] || 0) + 1;
+          }
+          for (let k = 0; k < subB; k++) {
+            const role = sB[(t * subB + k) % sB.length];
+            outB[role] = (outB[role] || 0) + 1;
+          }
+
+          CATEGORIES.forEach(c => {
+            const w = c === "bm" ? 60 : c === "fm" || c === "b" ? 50 : 35;
+            // AとBで同じターンに抜ける同カテゴリの人数差
+            cost += Math.abs((outA[c] || 0) - (outB[c] || 0)) * w;
+          });
+        }
+      }
+
+      return cost;
+    };
+
+    // 候補が多い場合はランダムサンプリング＋全件上位比較で高速化
+    const sampleA = validSlotsA.length > 80 ? shuffle(validSlotsA).slice(0, 80) : validSlotsA;
+    const sampleB = validSlotsB.length > 80 ? shuffle(validSlotsB).slice(0, 80) : validSlotsB;
+
+    for (let i = 0; i < sampleA.length; i++) {
+      for (let j = 0; j < sampleB.length; j++) {
+        const c = evalSlotAlignment(sampleA[i], sampleB[j]);
+        if (c < bestPairCost) {
+          bestPairCost = c;
+          bestSlotsA = sampleA[i];
+          bestSlotsB = sampleB[j];
+          if (bestPairCost === 0) break;
+        }
+      }
+      if (bestPairCost === 0) break;
+    }
+
+    return [
+      assignMembersToRoleSlots(teamA, bestSlotsA),
+      assignMembersToRoleSlots(teamB, bestSlotsB)
+    ];
+  }
+
+  function optimizeScheduleOrders(teams, roundsPairings, isSwapMode) {
+    const teamCountLocal = teams.length;
+    const totalRounds = roundsPairings.length * 3;
+
+    const candSlotPools = teams.map(t => {
+      const counts = {};
+      CATEGORIES.forEach(c => {
+        counts[c] = countByResultCat(t, c);
+      });
+      return getStrictNoAdjacentArrangements(counts).slice(0, 150);
+    });
+
+    const evalSchedule = (chosenSlots) => {
+      const cursors = Array(teamCountLocal).fill(0);
+      let matchDiffScore = 0;
+
+      chosenSlots.forEach(slots => {
+        matchDiffScore += countAdjacentSame(slots) * 1000000;
+      });
+
+      for (let r = 0; r < totalRounds; r++) {
+        const pairings = roundsPairings[r % roundsPairings.length];
+        for (const [i, j] of pairings) {
+          const courtSize = Math.min(5, teams[i].length, teams[j].length);
+          const subI = Math.max(0, teams[i].length - courtSize);
+          const subJ = Math.max(0, teams[j].length - courtSize);
+
+          const groupI = {};
+          for (let k = 0; k < subI; k++) {
+            const role = chosenSlots[i][(cursors[i] + k) % teams[i].length];
+            groupI[role] = (groupI[role] || 0) + 1;
+          }
+          cursors[i] += subI;
+
+          const groupJ = {};
+          for (let k = 0; k < subJ; k++) {
+            const role = chosenSlots[j][(cursors[j] + k) % teams[j].length];
+            groupJ[role] = (groupJ[role] || 0) + 1;
+          }
+          cursors[j] += subJ;
+
+          if (subI > 0 && subI === subJ) {
+            CATEGORIES.forEach(c => {
+              const w = c === "bm" ? 50 : c === "fm" || c === "b" ? 45 : 30;
+              matchDiffScore += Math.abs((groupI[c] || 0) - (groupJ[c] || 0)) * w;
+            });
+          }
+        }
+      }
+      return matchDiffScore;
+    };
+
+    let bestSlots = candSlotPools.map(pool => pool[0]);
+    let bestScore = evalSchedule(bestSlots);
+
+    const trials = isSwapMode ? 1500 : 1200;
+    for (let t = 0; t < trials; t++) {
+      const trialSlots = candSlotPools.map(pool => pool[Math.floor(Math.random() * pool.length)]);
+      const sc = evalSchedule(trialSlots);
+      if (sc < bestScore) {
+        bestScore = sc;
+        bestSlots = trialSlots;
+        if (bestScore === 0) break;
+      }
+    }
+
+    for (let pass = 0; pass < 2; pass++) {
+      for (let idx = 0; idx < teamCountLocal; idx++) {
+        for (const cand of candSlotPools[idx]) {
+          const next = [...bestSlots];
+          next[idx] = cand;
+          const sc = evalSchedule(next);
+          if (sc < bestScore) {
+            bestScore = sc;
+            bestSlots = next;
+          }
+        }
+      }
+    }
+
+    return teams.map((t, idx) => assignMembersToRoleSlots(t, bestSlots[idx]));
+  }
+
+  function orderTeamsWithPair(teams, pairSameSub, isSwapMode = false) {
+    if (!pairSameSub) {
+      return teams.map(t => shuffle(t));
+    }
+
+    if (teams.length === 2) {
+      const courtSize = Math.min(5, teams[0].length, teams[1].length);
+      const subA = Math.max(0, teams[0].length - courtSize);
+      const subB = Math.max(0, teams[1].length - courtSize);
+      return optimizeTwoTeamsOrders(teams[0], teams[1], subA, subB);
+    }
+
+    if (teams.length === 3) {
+      return optimizeScheduleOrders(
+        teams,
+        [
+          [[0, 1]],
+          [[0, 2]],
+          [[1, 2]]
+        ],
+        isSwapMode
+      );
+    }
+
+    if (teams.length === 4) {
+      return optimizeScheduleOrders(
+        teams,
+        [
+          [[0, 1], [2, 3]],
+          [[0, 2], [1, 3]],
+          [[0, 3], [1, 2]]
+        ],
+        isSwapMode
+      );
+    }
+
+    return teams.map(t => {
+      const counts = {};
+      CATEGORIES.forEach(c => { counts[c] = countByResultCat(t, c); });
+      const slots = getStrictNoAdjacentArrangements(counts)[0] || [];
+      return assignMembersToRoleSlots(t, slots);
+    });
+  }
+
+  function getBibsInfo(teamIdx, totalTeams) {
+    if (totalTeams <= 2) {
+      if (teamIdx === 0) {
+        return { label: "🎽 ビブス着用", cssClass: "bibs-on" };
+      }
+      return { label: "👕 ビブスなし", cssClass: "bibs-off" };
+    }
+    if (teamIdx === 0) {
+      return { label: "🎽 ビブス①（常時着用）", cssClass: "bibs-on" };
+    }
+    if (teamIdx === 1) {
+      return { label: "👕 ビブスなし（基本なし）", cssClass: "bibs-off" };
+    }
+    if (teamIdx === 2) {
+      return { label: "🎽 ビブス②（Bと対戦時のみ着用）", cssClass: "bibs-sub" };
+    }
+    return { label: "👕 ビブスなし（基本なし・Aと対戦時のみ調整）", cssClass: "bibs-off" };
+  }
+
+  function generateTeams(isSwapMode = false) {
+    const participants = getActiveParticipants();
+    if (participants.length === 0) {
+      alert("参加メンバーまたはゲストを選択してください。");
+      return;
+    }
+
+    const effectiveTeamCount = Math.min(teamCount, participants.length);
+    const pairSameSub = document.getElementById("pair-same-sub").checked;
+
+    if (isSwapMode && currentRound > 0) {
+      currentRound += 1;
+    } else {
+      currentRound = 1;
+      roundHistory = [];
+    }
+
+    const teams = allocateParticipantsToTeams(participants, effectiveTeamCount, isSwapMode);
+    const minOnCourt = getMinOnCourtCount(teams);
+    const orderedTeams = orderTeamsWithPair(teams, pairSameSub, isSwapMode);
+
+    const teamResults = orderedTeams.map((orderedMembers, idx) => {
+      const needsSubOrder = shouldDetermineSubOrder(idx, teams);
+      const subCount = needsSubOrder ? orderedMembers.length - minOnCourt : 0;
+      const bibs = getBibsInfo(idx, effectiveTeamCount);
+      return {
+        members: orderedMembers,
+        needsSubOrder,
+        subCount,
+        minOnCourt,
+        bibs
+      };
+    });
+
+    roundHistory.push(teamResults.map(t => [...t.members]));
+    lastRenderedContext = {
+      teamResults,
+      effectiveTeamCount,
+      roundNum: currentRound
+    };
+
+    const imgBox = document.getElementById("image-preview-box");
+    if (imgBox) imgBox.classList.add("hidden");
+
+    renderResults(teamResults, effectiveTeamCount, { scrollToResult: true, persist: true });
+  }
+
+  function formatCatShort(cat) {
+    if (cat === "bm") return "XL";
+    if (cat === "fm") return "女";
+    if (cat === "b") return "B";
+    return "一般";
+  }
+
+  function formatPlainTags(p) {
+    const guestTag = p.isGuest ? "[ゲスト]" : "";
+    const dispLabel = formatCatShort(getResultDisplayCategory(p));
+    return `${p.name}${guestTag}(${dispLabel})`;
+  }
+
+  function renderHistoryBox() {
+    const histEl = document.getElementById("history-area");
+    if (roundHistory.length <= 1) {
+      histEl.classList.add("hidden");
+      histEl.innerHTML = "";
+      return;
+    }
+
+    const teamNames = ["Aチーム", "Bチーム", "Cチーム", "Dチーム"];
+    const pastRounds = roundHistory.slice(0, -1);
+
+    const blocks = pastRounds.map((rTeams, rIdx) => {
+      const teamLines = rTeams
+        .map((t, tIdx) => {
+          const tName = teamNames[tIdx] || `チーム${tIdx + 1}`;
+          const namesStr = t.map(p => escapeHtml(p.name)).join("、");
+          return `<div class="history-team-line">・${tName}（${t.length}人）: ${namesStr}</div>`;
+        })
+        .join("");
+      return `
+        <div class="history-round">
+          <div class="history-round-label">${rIdx + 1}回戦</div>
+          ${teamLines}
+        </div>
+      `;
+    });
+
+    histEl.innerHTML = `<div class="history-title">📜 過去の対戦履歴</div>${blocks.join("")}`;
+    histEl.classList.remove("hidden");
+  }
+
+  function renderResults(teamResults, effectiveTeamCount, opts = {}) {
+    const { scrollToResult = true, persist = true } = opts;
+    const teamNames = ["Aチーム", "Bチーム", "Cチーム", "Dチーム"];
+    const container = document.getElementById("result-teams");
+    const banner = document.getElementById("round-banner");
+    const restNote = document.getElementById("rest-note");
+    const cycleNote = document.getElementById("cycle-note");
+    const minTeamSize = Math.min(...teamResults.map(t => t.members.length));
+    const modeNote = minTeamSize < 5 ? `・${minTeamSize}対${minTeamSize}形式` : "";
+
+    banner.textContent = `${currentRound}回戦`;
+
+    if (currentRound >= 2) {
+      restNote.classList.remove("hidden");
+    } else {
+      restNote.classList.add("hidden");
+    }
+
+    let scheduleText = "";
+    if (effectiveTeamCount === 3) {
+      scheduleText = "試合順：①A vs B ② A vs C ③B vs C";
+    } else if (effectiveTeamCount === 4) {
+      scheduleText = "試合順：①A vs B、C vs D ②A vs C、B vs D ③A vs D、B vs C";
+    }
+
+    if (scheduleText) {
+      cycleNote.textContent = scheduleText;
+      cycleNote.classList.remove("hidden");
+    } else {
+      cycleNote.textContent = "";
+      cycleNote.classList.add("hidden");
+    }
+
+    let shareLines = [`🏀 GB-Rings 🏀 チーム分け結果（${currentRound}回戦${modeNote}）`];
+    if (currentRound >= 2) {
+      shareLines.push("※まだ休憩していない人がいれば要調整");
+    }
+    if (scheduleText) {
+      shareLines.push(scheduleText);
+    }
+    shareLines.push("");
+
+    container.innerHTML = teamResults.map((tObj, idx) => {
+      const team = tObj.members;
+      const tName = teamNames[idx] || `チーム${idx + 1}`;
+      const bmCnt = countByResultCat(team, "bm");
+      const fmCnt = countByResultCat(team, "fm");
+      const bCnt = countByResultCat(team, "b");
+      const normCnt = countByResultCat(team, "normal");
+
+      const subCount = tObj.subCount;
+
+      const statusBadgeHtml = tObj.needsSubOrder
+        ? `<span class="sub-rule-caption">🔁 交代順（${subCount}人抜け・1番目から順）</span>`
+        : `<span class="no-sub-pill">交代なし</span>`;
+
+      const rosterHtml = team.map((p, i) => {
+        const orderPrefix = tObj.needsSubOrder
+          ? `<span class="order-num">${i + 1}</span>`
+          : `<span class="order-num" style="background:#94a3b8;">・</span>`;
+        return `
+          <div class="roster-item ${tObj.needsSubOrder ? "has-order" : ""}">
+            <div class="roster-left">
+              ${orderPrefix}
+              <span>${escapeHtml(p.name)}</span>
+            </div>
+            <div>${renderResultIconHtml(p)}</div>
+          </div>
+        `;
+      }).join("");
+
+      shareLines.push(`【${tName}】${team.length}人 [${tObj.bibs.label}]`);
+      shareLines.push(`内訳: XL:${bmCnt} / 一般:${normCnt} / 女:${fmCnt} / B:${bCnt}`);
+      shareLines.push(tObj.needsSubOrder ? `交代順（${subCount}人抜け・1番目から順）:` : `メンバー（交代なし）:`);
+      team.forEach((p, i) => {
+        if (tObj.needsSubOrder) {
+          shareLines.push(`  ${i + 1}. ${formatPlainTags(p)}`);
+        } else {
+          shareLines.push(`  ・${formatPlainTags(p)}`);
+        }
+      });
+      shareLines.push("");
+
+      return `
+        <div class="result-box">
+          <div class="result-team-header">
+            <span>${tName}（${team.length}人）</span>
+            ${renderStatCountsHtml(team, true)}
+          </div>
+          <div class="result-meta">
+            <span class="bibs-tag ${tObj.bibs.cssClass}">${tObj.bibs.label}</span>
+            ${statusBadgeHtml}
+          </div>
+          <div class="roster-list">${rosterHtml}</div>
+        </div>
+      `;
+    }).join("");
+
+    renderHistoryBox();
+
+    lastResultText = shareLines.join("\n").trim();
+    if (persist) {
+      saveSessionState();
+    }
+
+    const resArea = document.getElementById("result-area");
+    resArea.classList.remove("hidden");
+    if (scrollToResult) {
+      resArea.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function renderResultCanvasDataUrl() {
+    if (!lastRenderedContext || !lastRenderedContext.teamResults || lastRenderedContext.teamResults.length === 0) {
+      return null;
+    }
+
+    const { teamResults, effectiveTeamCount, roundNum } = lastRenderedContext;
+    const teamNames = ["Aチーム", "Bチーム", "Cチーム", "Dチーム"];
+    const minTeamSize = Math.min(...teamResults.map(t => t.members.length));
+    const modeNote = minTeamSize < 5 ? `・${minTeamSize}対${minTeamSize}形式` : "";
+
+    let scheduleText = "";
+    if (effectiveTeamCount === 3) {
+      scheduleText = "試合順：①A vs B ② A vs C ③B vs C";
+    } else if (effectiveTeamCount === 4) {
+      scheduleText = "試合順：①A vs B、C vs D ②A vs C、B vs D ③A vs D、B vs C";
+    }
+
+    const width = 900;
+    const padX = 28;
+    const innerW = width - padX * 2;
+    const rowH = 42;
+    const rowGap = 7;
+
+    let estimatedH = 150;
+    if (roundNum >= 2) estimatedH += 44;
+    if (scheduleText) estimatedH += 44;
+
+    teamResults.forEach(tObj => {
+      estimatedH += 108 + tObj.members.length * (rowH + rowGap) + 20;
+    });
+    estimatedH += 28;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = estimatedH;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#f1f5f9";
+    ctx.fillRect(0, 0, width, estimatedH);
+
+    ctx.fillStyle = "#142850";
+    ctx.fillRect(0, 0, width, 84);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(0, 80, width, 4);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`GB-Rings チーム分け（${roundNum}回戦${modeNote}）`, width / 2, 51);
+    ctx.textAlign = "left";
+
+    let y = 104;
+
+    if (roundNum >= 2) {
+      drawRoundRect(ctx, padX, y, innerW, 34, 8);
+      ctx.fillStyle = "#fef2f2";
+      ctx.fill();
+      ctx.strokeStyle = "#fecaca";
+      ctx.stroke();
+      ctx.fillStyle = "#b91c1c";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText("※まだ休憩していない人がいれば要調整", padX + 14, y + 22);
+      y += 44;
+    }
+
+    if (scheduleText) {
+      drawRoundRect(ctx, padX, y, innerW, 34, 8);
+      ctx.fillStyle = "#fffbeb";
+      ctx.fill();
+      ctx.strokeStyle = "#fde68a";
+      ctx.stroke();
+      ctx.fillStyle = "#92400e";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(scheduleText, padX + 14, y + 22);
+      y += 44;
+    }
+
+    teamResults.forEach((tObj, idx) => {
+      const team = tObj.members;
+      const tName = teamNames[idx] || `チーム${idx + 1}`;
+      const bmCnt = countByResultCat(team, "bm");
+      const normCnt = countByResultCat(team, "normal");
+      const fmCnt = countByResultCat(team, "fm");
+      const bCnt = countByResultCat(team, "b");
+      const cardH = 92 + team.length * (rowH + rowGap);
+
+      drawRoundRect(ctx, padX, y, innerW, cardH, 12);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = "#142850";
+      ctx.fillRect(padX, y, 8, cardH);
+
+      ctx.fillStyle = "#142850";
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText(`${tName}（${team.length}人）`, padX + 22, y + 32);
+
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#475569";
+      ctx.font = "bold 15px sans-serif";
+      const statText = `:${bmCnt}  :${normCnt}  :${fmCnt}  :${bCnt}`;
+      ctx.fillText(statText, width - padX - 16, y + 31);
+      ctx.textAlign = "left";
+
+      const rightStatX = width - padX - 16;
+      const iconW = 20;
+      const bIconX = rightStatX - ctx.measureText(`  :${bCnt}`).width - iconW - 2;
+      const fmIconX = rightStatX - ctx.measureText(`  :${fmCnt}  :${bCnt}`).width - iconW - 2;
+      const normIconX = rightStatX - ctx.measureText(`  :${normCnt}  :${fmCnt}  :${bCnt}`).width - iconW - 2;
+      const bmIconX = rightStatX - ctx.measureText(`:${bmCnt}  :${normCnt}  :${fmCnt}  :${bCnt}`).width - iconW - 2;
+
+      [
+        { key: "bm", x: bmIconX },
+        { key: "normal", x: normIconX },
+        { key: "fm", x: fmIconX },
+        { key: "b", x: bIconX }
+      ].forEach(item => {
+        const ic = canvasIconCache[item.key];
+        if (ic && ic.complete) {
+          ctx.drawImage(ic, item.x, y + 14, iconW, iconW);
+        }
+      });
+
+      ctx.fillStyle = "#b45309";
+      ctx.font = "bold 15px sans-serif";
+      const cleanBibs = tObj.bibs.label.replace(/^[^\s]+\s*/, "");
+      const subText = tObj.needsSubOrder
+        ? `交代順（${tObj.subCount}人抜け・1番目から順）`
+        : "交代なし";
+      ctx.fillText(`${cleanBibs} ｜ ${subText}`, padX + 22, y + 60);
+
+      let memberY = y + 76;
+      team.forEach((p, i) => {
+        drawRoundRect(ctx, padX + 20, memberY, innerW - 36, rowH, 8);
+        ctx.fillStyle = tObj.needsSubOrder ? "#fffbeb" : "#f8fafc";
+        ctx.fill();
+        ctx.strokeStyle = tObj.needsSubOrder ? "#fde68a" : "#e2e8f0";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = "#142850";
+        ctx.font = "bold 17px sans-serif";
+        const numLabel = tObj.needsSubOrder ? `${i + 1}.` : "・";
+        ctx.fillText(`${numLabel} ${p.name}`, padX + 34, memberY + 26);
+
+        let rightIconX = width - padX - 48;
+        const dispCat = getResultDisplayCategory(p);
+        const catImg = canvasIconCache[dispCat];
+        if (catImg && catImg.complete) {
+          ctx.drawImage(catImg, rightIconX, memberY + 8, 26, 26);
+          rightIconX -= 32;
+        }
+
+        if (p.isGuest) {
+          const gImg = canvasIconCache.guest;
+          if (gImg && gImg.complete) {
+            ctx.drawImage(gImg, rightIconX, memberY + 8, 26, 26);
+          }
+        }
+
+        memberY += rowH + rowGap;
+      });
+
+      y += cardH + 14;
+    });
+
+    const finalCanvas = document.createElement("canvas");
+    finalCanvas.width = width;
+    finalCanvas.height = y + 10;
+    const fCtx = finalCanvas.getContext("2d");
+    fCtx.drawImage(canvas, 0, 0, width, y + 10, 0, 0, width, y + 10);
+
+    return finalCanvas.toDataURL("image/png");
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const parts = dataUrl.split(",");
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const byteString = atob(parts[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mime });
+  }
+
+  async function createAndShareResultImage() {
+    const dataUrl = renderResultCanvasDataUrl();
+    if (!dataUrl) {
+      alert("先にチーム分けを実行してください。");
+      return;
+    }
+
+    const previewImg = document.getElementById("result-image-preview");
+    const dlLink = document.getElementById("download-image-link");
+    const previewBox = document.getElementById("image-preview-box");
+
+    previewImg.src = dataUrl;
+    dlLink.href = dataUrl;
+    previewBox.classList.remove("hidden");
+    previewBox.scrollIntoView({ behavior: "smooth" });
+
+    try {
+      const blob = dataUrlToBlob(dataUrl);
+      const file = new File([blob], "gb-rings-teams.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "GB-Rings チーム分け結果"
+        });
+      }
+    } catch (e) {
+      // 共有キャンセルや非対応ブラウザではプレビュー表示・ダウンロード案内を残す
+    }
+  }
+
+  function copyResult() {
+    if (!lastResultText) return;
+    navigator.clipboard.writeText(lastResultText).then(() => {
+      alert("結果をコピーしました！LINEのトークに貼り付けてください。");
+    });
+  }
+
+  async function shareToLine() {
+    if (!lastResultText) return;
+    if (typeof liff !== "undefined" && liff.isInClient()) {
+      try {
+        await liff.sendMessages([{ type: "text", text: lastResultText }]);
+        alert("トーク画面に結果を送信しました！");
+        return;
+      } catch (e) {
+        console.warn("LIFF sendMessages fallback to URL share:", e);
+      }
+    }
+    const encoded = encodeURIComponent(lastResultText);
+    window.location.href = `https://line.me/R/share?text=${encoded}`;
+  }
+
+  // --- メンバー登録・編集関連 ---
+  function registerMember() {
+    const nameInput = document.getElementById("new-name");
+    const name = nameInput.value.trim();
+    if (!name) {
+      alert("名前を入力してください。");
+      return;
+    }
+    const category = document.querySelector('input[name="new-cat"]:checked').value;
+    const rawSub = document.querySelector('input[name="new-subcat"]:checked').value;
+    const subCategory = category === "bm" ? "" : normalizeSubCategory(rawSub);
+
+    const newMember = {
+      id: "m_" + Date.now(),
+      name,
+      category,
+      subCategory
+    };
+    members.push(newMember);
+    selectedMemberIds.add(newMember.id);
+    saveMembers();
+    saveSessionState();
+
+    nameInput.value = "";
+    document.querySelector('input[name="new-cat"][value="normal"]').checked = true;
+    document.querySelector('input[name="new-subcat"][value=""]').checked = true;
+
+    renderAll();
+  }
+
+  function startEditMember(id) {
+    editingMemberId = id;
+    renderRegMembers();
+  }
+
+  function cancelEditMember() {
+    editingMemberId = null;
+    renderRegMembers();
+  }
+
+  function saveEditMember(id) {
+    const m = members.find(item => item.id === id);
+    if (!m) return;
+
+    const nameEl = document.getElementById(`edit-name-${id}`);
+    const newName = (nameEl ? nameEl.value : "").trim();
+    if (!newName) {
+      alert("名前を入力してください。");
+      return;
+    }
+
+    const catEl = document.querySelector(`input[name="edit-cat-${id}"]:checked`);
+    const subEl = document.querySelector(`input[name="edit-subcat-${id}"]:checked`);
+
+    const nextCat = catEl ? catEl.value : m.category;
+    const nextSub = nextCat === "bm" ? "" : normalizeSubCategory(subEl ? subEl.value : "");
+
+    m.name = newName;
+    m.category = nextCat;
+    m.subCategory = nextSub;
+
+    editingMemberId = null;
+    saveMembers();
+    saveSessionState();
+    renderAll();
+  }
+
+  function deleteMember(id) {
+    if (!confirm("このメンバーをリストから削除しますか？")) return;
+    members = members.filter(m => m.id !== id);
+    selectedMemberIds.delete(id);
+    if (editingMemberId === id) editingMemberId = null;
+    saveMembers();
+    saveSessionState();
+    renderAll();
+  }
+
+  function renderEditCatRadios(groupName, currentVal, isSub) {
+    const options = isSub ? ["", "bm"] : ["normal", "bm", "fm", "b"];
+    const normalizedVal = isSub ? normalizeSubCategory(currentVal) : (currentVal || "normal");
+    return options.map(opt => {
+      const checked = normalizedVal === opt ? "checked" : "";
+      const labelHtml = opt === ""
+        ? `<span>なし</span>`
+        : `<img class="${isSub ? "cat-icon-sub" : "cat-icon-img"}" src="${getCategoryIconUrl(opt)}" alt="${opt}" />`;
+      return `
+        <label>
+          <input type="radio" name="${groupName}" value="${opt}" ${checked} />
+          ${labelHtml}
+        </label>
+      `;
+    }).join("");
+  }
+
+  function renderRegMembers() {
+    document.getElementById("reg-count").textContent = members.length;
+    const container = document.getElementById("reg-member-list");
+    if (members.length === 0) {
+      container.innerHTML = `<p style="font-size:13px;color:#888;">登録メンバーはまだいません。</p>`;
+      return;
+    }
+    container.innerHTML = members.map(m => {
+      if (editingMemberId === m.id) {
+        return `
+          <div class="member-row">
+            <div class="edit-member-box">
+              <div class="edit-label">名前</div>
+              <input type="text" id="edit-name-${m.id}" class="form-control" value="${escapeHtml(m.name)}" />
+
+              <div class="edit-label">メインカテゴリ</div>
+              <div class="cat-radios">
+                ${renderEditCatRadios(`edit-cat-${m.id}`, m.category, false)}
+              </div>
+
+              <div class="edit-label">サブカテゴリ（任意）</div>
+              <div class="cat-radios">
+                ${renderEditCatRadios(`edit-subcat-${m.id}`, m.subCategory || "", true)}
+              </div>
+
+              <div style="display:flex; gap:8px; margin-top:10px;">
+                <button class="btn btn-primary btn-sm" style="flex:1; padding:8px;" onclick="saveEditMember('${m.id}')">💾 保存</button>
+                <button class="btn btn-outline btn-sm" onclick="cancelEditMember()">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="member-row">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span>${escapeHtml(m.name)}</span>
+            <span>${renderCategoryIconsHtml(m.category, false, m.subCategory)}</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="startEditMember('${m.id}')">✏️ 編集</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteMember('${m.id}')">削除</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function exportMembers() {
+    const dataStr = JSON.stringify(members);
+    navigator.clipboard.writeText(dataStr).then(() => {
+      alert("メンバーデータをクリップボードにコピーしました！LINEノート等に貼り付けて共有し、「データを読み込む」から貼り付けてください。");
+    });
+  }
+
+  function importMembers() {
+    const input = prompt("共有されたメンバーデータのテキストを貼り付けてください（※現在のリストは上書きされます）:");
+    if (!input) return;
+    try {
+      const parsed = JSON.parse(input);
+      if (!Array.isArray(parsed)) throw new Error();
+      members = parsed.map(item => ({
+        ...item,
+        subCategory: normalizeSubCategory(item.subCategory)
+      }));
+      selectedMemberIds.clear();
+      editingMemberId = null;
+      saveMembers();
+      saveSessionState();
+      renderAll();
+      alert(`${members.length}人のメンバーを読み込みました！`);
+    } catch (e) {
+      alert("データの形式が正しくありません。");
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+</script>
+</body>
+</html>
