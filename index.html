@@ -494,7 +494,7 @@
       border-radius: 8px;
       border: 1px solid #cbd5e1;
       display: block;
-      margin: 0 auto 10px auto;
+      margin: 0 auto 4px auto;
     }
     .image-help-text {
       font-size: 12px;
@@ -654,10 +654,9 @@
 
       <div id="image-preview-box" class="image-preview-box hidden">
         <div class="image-help-text">
-          1枚にまとめた結果画像です。共有画面が開かない場合は、画像を長押し保存（またはダウンロード）してLINEに貼ってください。
+          1枚にまとめた結果画像です。共有画面が開かない場合は、画像を長押し保存してLINEに貼ってください。
         </div>
         <img id="result-image-preview" alt="チーム分け結果画像" />
-        <a id="download-image-link" class="btn btn-outline btn-sm" download="gb-rings-teams.png">💾 画像をダウンロード</a>
       </div>
     </div>
   </div>
@@ -1401,7 +1400,6 @@
     return adj;
   }
 
-  // 隣り合う同カテゴリが1つもない順列を全列挙（必ず countAdjacentSame === 0 のもののみ返す）
   function getStrictNoAdjacentArrangements(roleCounts) {
     const total = Object.values(roleCounts).reduce((a, b) => a + b, 0);
     if (total === 0) return [[]];
@@ -1432,13 +1430,10 @@
 
     backtrackStrict(0);
 
-    // 厳密解（隣り合いゼロ）が存在する場合は100%それを返す
     if (strictList.length > 0) {
       return shuffle(strictList);
     }
 
-    // 物理的に1つも隣り合いゼロが作れない極端な人数（例: 同じカテゴリが5人以上など）の場合のみ、
-    // 隣り合い回数が最小になる順列だけを返す
     let minAdj = Infinity;
     const bestPartial = [];
     function backtrackBest(depth) {
@@ -1491,10 +1486,6 @@
     return ordered;
   }
 
-// 2チーム専用：
-  // ・両チームとも「隣り合い同カテゴリゼロ」を維持
-  // ・抜ける人数（subA, subB）が同じ場合も、ずれる場合（例：1人抜け vs 2人抜け）も、
-  //   複数ターンの抜け番カテゴリの偏り・ズレを最小化する並び順を選出
   function optimizeTwoTeamsOrders(teamA, teamB, subA, subB) {
     const countsA = {};
     const countsB = {};
@@ -1512,7 +1503,6 @@
 
     const lenA = teamA.length;
     const lenB = teamB.length;
-    // 抜ける人数の最小公倍数（または最大12ターン）で周期を評価
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
     const lcmTurns =
       subA > 0 && subB > 0
@@ -1524,15 +1514,12 @@
       let cost = countAdjacentSame(sA) * 1000000 + countAdjacentSame(sB) * 1000000;
       const minLen = Math.min(sA.length, sB.length);
 
-      // 同じ番号同士の一致度も軽く加味
       for (let i = 0; i < minLen; i++) {
         if (sA[i] !== sB[i]) {
           cost += 200;
         }
       }
 
-      // 抜ける人数がずれるケース（subA !== subB）でも同じケースでも、
-      // 各ターンで抜けるカテゴリの構成差を最小化
       if ((subA > 0 || subB > 0) && sA.length > 0 && sB.length > 0) {
         for (let t = 0; t < simTurns; t++) {
           const outA = {};
@@ -1549,7 +1536,6 @@
 
           CATEGORIES.forEach(c => {
             const w = c === "bm" ? 60 : c === "fm" || c === "b" ? 50 : 35;
-            // AとBで同じターンに抜ける同カテゴリの人数差
             cost += Math.abs((outA[c] || 0) - (outB[c] || 0)) * w;
           });
         }
@@ -1558,7 +1544,6 @@
       return cost;
     };
 
-    // 候補が多い場合はランダムサンプリング＋全件上位比較で高速化
     const sampleA = validSlotsA.length > 80 ? shuffle(validSlotsA).slice(0, 80) : validSlotsA;
     const sampleB = validSlotsB.length > 80 ? shuffle(validSlotsB).slice(0, 80) : validSlotsB;
 
@@ -1774,17 +1759,9 @@
     renderResults(teamResults, effectiveTeamCount, { scrollToResult: true, persist: true });
   }
 
-  function formatCatShort(cat) {
-    if (cat === "bm") return "XL";
-    if (cat === "fm") return "女";
-    if (cat === "b") return "B";
-    return "一般";
-  }
-
   function formatPlainTags(p) {
     const guestTag = p.isGuest ? "[ゲスト]" : "";
-    const dispLabel = formatCatShort(getResultDisplayCategory(p));
-    return `${p.name}${guestTag}(${dispLabel})`;
+    return `${p.name}${guestTag}`;
   }
 
   function renderHistoryBox() {
@@ -1863,11 +1840,6 @@
     container.innerHTML = teamResults.map((tObj, idx) => {
       const team = tObj.members;
       const tName = teamNames[idx] || `チーム${idx + 1}`;
-      const bmCnt = countByResultCat(team, "bm");
-      const fmCnt = countByResultCat(team, "fm");
-      const bCnt = countByResultCat(team, "b");
-      const normCnt = countByResultCat(team, "normal");
-
       const subCount = tObj.subCount;
 
       const statusBadgeHtml = tObj.needsSubOrder
@@ -1890,7 +1862,6 @@
       }).join("");
 
       shareLines.push(`【${tName}】${team.length}人 [${tObj.bibs.label}]`);
-      shareLines.push(`内訳: XL:${bmCnt} / 一般:${normCnt} / 女:${fmCnt} / B:${bCnt}`);
       shareLines.push(tObj.needsSubOrder ? `交代順（${subCount}人抜け・1番目から順）:` : `メンバー（交代なし）:`);
       team.forEach((p, i) => {
         if (tObj.needsSubOrder) {
@@ -2138,11 +2109,9 @@
     }
 
     const previewImg = document.getElementById("result-image-preview");
-    const dlLink = document.getElementById("download-image-link");
     const previewBox = document.getElementById("image-preview-box");
 
     previewImg.src = dataUrl;
-    dlLink.href = dataUrl;
     previewBox.classList.remove("hidden");
     previewBox.scrollIntoView({ behavior: "smooth" });
 
@@ -2156,7 +2125,7 @@
         });
       }
     } catch (e) {
-      // 共有キャンセルや非対応ブラウザではプレビュー表示・ダウンロード案内を残す
+      // 共有キャンセルや非対応ブラウザではエラーを出さずプレビュー表示のままにする
     }
   }
 
