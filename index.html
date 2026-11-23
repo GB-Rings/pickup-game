@@ -653,10 +653,11 @@
       </div>
 
       <div id="image-preview-box" class="image-preview-box hidden">
-        <div class="image-help-text">
-          1枚にまとめた結果画像です。共有画面が開かない場合は、画像を長押し保存してLINEに貼ってください。
+        <div class="image-help-text" id="image-help-text">
+          1枚にまとめた結果画像です。画像を長押しして保存・共有してください。
         </div>
         <img id="result-image-preview" alt="チーム分け結果画像" />
+        <button id="open-external-browser-btn" class="btn btn-outline btn-sm hidden" style="margin-top:8px; width:100%;" onclick="openInExternalBrowser()">🌐 Safari / Chromeで開く（画像共有・保存用）</button>
       </div>
     </div>
   </div>
@@ -758,6 +759,7 @@
   let roundHistory = [];
   let currentRound = 0;
   let lastRenderedContext = null;
+  let lastPreviewObjectUrl = null;
 
   const canvasIconCache = {};
 
@@ -857,6 +859,10 @@
     currentRound = 0;
     lastRenderedContext = null;
     lastResultText = "";
+    if (lastPreviewObjectUrl) {
+      URL.revokeObjectURL(lastPreviewObjectUrl);
+      lastPreviewObjectUrl = null;
+    }
 
     [2, 3, 4].forEach(n => {
       const btn = document.getElementById(`tbtn-${n}`);
@@ -1760,7 +1766,7 @@
   }
 
   function formatPlainTags(p) {
-    return `${p.name}${guestTag}`;
+    return p.name;
   }
 
   function renderHistoryBox() {
@@ -2100,6 +2106,16 @@
     return new Blob([ab], { type: mime });
   }
 
+  function isLineInAppBrowser() {
+    return /Line\//i.test(navigator.userAgent || "");
+  }
+
+  function openInExternalBrowser() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("openExternalBrowser", "1");
+    window.location.href = url.toString();
+  }
+
   async function createAndShareResultImage() {
     const dataUrl = renderResultCanvasDataUrl();
     if (!dataUrl) {
@@ -2107,15 +2123,31 @@
       return;
     }
 
+    const blob = dataUrlToBlob(dataUrl);
+    if (lastPreviewObjectUrl) {
+      URL.revokeObjectURL(lastPreviewObjectUrl);
+    }
+    lastPreviewObjectUrl = URL.createObjectURL(blob);
+
     const previewImg = document.getElementById("result-image-preview");
     const previewBox = document.getElementById("image-preview-box");
+    const helpText = document.getElementById("image-help-text");
+    const extBtn = document.getElementById("open-external-browser-btn");
 
-    previewImg.src = dataUrl;
+    previewImg.src = lastPreviewObjectUrl;
     previewBox.classList.remove("hidden");
+
+    if (isLineInAppBrowser()) {
+      helpText.textContent = "LINE内ブラウザでは直接の画像共有が制限されています。下のボタンでSafari / Chromeに切り替えるか、画像を長押し・スクショして共有してください。";
+      extBtn.classList.remove("hidden");
+    } else {
+      helpText.textContent = "1枚にまとめた結果画像です。画像を長押しして保存・共有してください。";
+      extBtn.classList.add("hidden");
+    }
+
     previewBox.scrollIntoView({ behavior: "smooth" });
 
     try {
-      const blob = dataUrlToBlob(dataUrl);
       const file = new File([blob], "gb-rings-teams.png", { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
@@ -2124,7 +2156,7 @@
         });
       }
     } catch (e) {
-      // 共有キャンセルや非対応ブラウザではエラーを出さずプレビュー表示のままにする
+      // 共有キャンセルや非対応ブラウザではプレビュー表示のままにする
     }
   }
 
