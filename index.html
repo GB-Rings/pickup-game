@@ -207,8 +207,8 @@
       border-radius: 6px;
       font-weight: bold;
     }
-    .bibs-on { background: var(--bibs-on-bg); color: var(--bibs-on-text); border: 1px solid #93c5fd; }
-    .bibs-sub { background: var(--bibs-sub-bg); color: var(--bibs-sub-text); border: 1px solid #fcd34d; }
+    .bibs-on { background: var(--bibs-sub-bg); color: var(--bibs-sub-text); border: 1px solid #fcd34d; }
+    .bibs-sub { background: #e0e7ff; color: #142850; border: 1px solid #93c5fd; }
     .bibs-off { background: var(--bibs-off-bg); color: var(--bibs-off-text); border: 1px solid #cbd5e1; }
 
     .btn {
@@ -2123,6 +2123,7 @@
 
     const { teamResults, effectiveTeamCount, roundNum } = lastRenderedContext;
     const teamNames = ["Aチーム", "Bチーム", "Cチーム", "Dチーム"];
+    const totalParticipants = teamResults.reduce((sum, tObj) => sum + tObj.members.length, 0);
     const minTeamSize = Math.min(...teamResults.map(t => t.members.length));
     const modeNote = minTeamSize < 5 ? `・${minTeamSize}対${minTeamSize}形式` : "";
 
@@ -2133,64 +2134,79 @@
       scheduleText = "試合順：①A vs B、C vs D ②A vs C、B vs D ③A vs D、B vs C";
     }
 
-    const width = 900;
-    const padX = 28;
+    const width = 640;
+    const padX = 20;
     const innerW = width - padX * 2;
-    const rowH = 42;
-    const rowGap = 7;
+    const rowH = 50;
+    const rowGap = 8;
 
-    let estimatedH = 150;
-    if (roundNum >= 2) estimatedH += 44;
-    if (scheduleText) estimatedH += 44;
+    let estimatedH = 215;
+    if (roundNum >= 2) estimatedH += 48;
+    if (scheduleText) estimatedH += 48;
 
     teamResults.forEach(tObj => {
-      estimatedH += 108 + tObj.members.length * (rowH + rowGap) + 20;
+      estimatedH += 116 + tObj.members.length * (rowH + rowGap) + 24;
     });
-    estimatedH += 28;
+    estimatedH += 32;
 
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = estimatedH;
     const ctx = canvas.getContext("2d");
 
+    // 背景
     ctx.fillStyle = "#f1f5f9";
     ctx.fillRect(0, 0, width, estimatedH);
 
+    // ヘッダー
     ctx.fillStyle = "#142850";
-    ctx.fillRect(0, 0, width, 84);
+    ctx.fillRect(0, 0, width, 86);
     ctx.fillStyle = "#f59e0b";
-    ctx.fillRect(0, 80, width, 4);
+    ctx.fillRect(0, 82, width, 4);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 26px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`GB-Rings チーム分け（${roundNum}回戦${modeNote}）`, width / 2, 51);
+    ctx.fillText(`GB-Rings チーム分け（${roundNum}回戦${modeNote}）`, width / 2, 52);
     ctx.textAlign = "left";
 
-    let y = 104;
+    let y = 102;
+
+    // 参加総数バー
+    drawRoundRect(ctx, padX, y, innerW, 36, 8);
+    ctx.fillStyle = "#eef2ff";
+    ctx.fill();
+    ctx.strokeStyle = "#c7d2fe";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#142850";
+    ctx.font = "bold 17px sans-serif";
+    ctx.fillText(`参加総数：${totalParticipants}人（${effectiveTeamCount}チーム）`, padX + 14, y + 24);
+    y += 46;
 
     if (roundNum >= 2) {
-      drawRoundRect(ctx, padX, y, innerW, 34, 8);
+      drawRoundRect(ctx, padX, y, innerW, 38, 8);
       ctx.fillStyle = "#fef2f2";
       ctx.fill();
       ctx.strokeStyle = "#fecaca";
       ctx.stroke();
       ctx.fillStyle = "#b91c1c";
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillText("※まだ休憩していない人がいれば要調整", padX + 14, y + 22);
-      y += 44;
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText("※まだ休憩していない人がいれば要調整", padX + 14, y + 25);
+      y += 48;
     }
 
     if (scheduleText) {
-      drawRoundRect(ctx, padX, y, innerW, 34, 8);
+      drawRoundRect(ctx, padX, y, innerW, 38, 8);
       ctx.fillStyle = "#fffbeb";
       ctx.fill();
       ctx.strokeStyle = "#fde68a";
       ctx.stroke();
       ctx.fillStyle = "#92400e";
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillText(scheduleText, padX + 14, y + 22);
-      y += 44;
+      ctx.font = "bold 17px sans-serif";
+      ctx.fillText(scheduleText, padX + 14, y + 25);
+      y += 48;
     }
 
     teamResults.forEach((tObj, idx) => {
@@ -2200,7 +2216,7 @@
       const normCnt = countByResultCat(team, "normal");
       const fmCnt = countByResultCat(team, "fm");
       const bCnt = countByResultCat(team, "b");
-      const cardH = 92 + team.length * (rowH + rowGap);
+      const cardH = 98 + team.length * (rowH + rowGap);
 
       drawRoundRect(ctx, padX, y, innerW, cardH, 12);
       ctx.fillStyle = "#ffffff";
@@ -2212,47 +2228,58 @@
       ctx.fillStyle = "#142850";
       ctx.fillRect(padX, y, 8, cardH);
 
+      // 左側：チーム名＋人数（右側の集計と重ならないようフォントサイズを調整）
       ctx.fillStyle = "#142850";
-      ctx.font = "bold 22px sans-serif";
-      ctx.fillText(`${tName}（${team.length}人）`, padX + 22, y + 32);
+      ctx.font = "bold 21px sans-serif";
+      ctx.fillText(`${tName}（${team.length}人）`, padX + 18, y + 33);
 
-      ctx.textAlign = "right";
-      ctx.fillStyle = "#475569";
-      ctx.font = "bold 15px sans-serif";
-      const statText = `:${bmCnt}  :${normCnt}  :${fmCnt}  :${bCnt}`;
-      ctx.fillText(statText, width - padX - 16, y + 31);
-      ctx.textAlign = "left";
-
-      const rightStatX = width - padX - 16;
+      // 右側：カテゴリ別人数集計を右端から逆順に配置
+      const statItems = [
+        { key: "b", cnt: bCnt },
+        { key: "fm", cnt: fmCnt },
+        { key: "normal", cnt: normCnt },
+        { key: "bm", cnt: bmCnt }
+      ];
       const iconW = 20;
-      const bIconX = rightStatX - ctx.measureText(`  :${bCnt}`).width - iconW - 2;
-      const fmIconX = rightStatX - ctx.measureText(`  :${fmCnt}  :${bCnt}`).width - iconW - 2;
-      const normIconX = rightStatX - ctx.measureText(`  :${normCnt}  :${fmCnt}  :${bCnt}`).width - iconW - 2;
-      const bmIconX = rightStatX - ctx.measureText(`:${bmCnt}  :${normCnt}  :${fmCnt}  :${bCnt}`).width - iconW - 2;
+      const gapAfterIcon = 2;
+      const gapBetweenGroups = 8;
+      let cursorX = width - padX - 14;
 
-      [
-        { key: "bm", x: bmIconX },
-        { key: "normal", x: normIconX },
-        { key: "fm", x: fmIconX },
-        { key: "b", x: bIconX }
-      ].forEach(item => {
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillStyle = "#475569";
+
+      statItems.forEach((item, sIdx) => {
+        const label = `:${item.cnt}`;
+        const labelW = ctx.measureText(label).width;
+
+        ctx.textAlign = "right";
+        ctx.fillText(label, cursorX, y + 32);
+        ctx.textAlign = "left";
+
+        cursorX -= labelW + gapAfterIcon + iconW;
         const ic = canvasIconCache[item.key];
         if (ic && ic.complete) {
-          ctx.drawImage(ic, item.x, y + 14, iconW, iconW);
+          ctx.drawImage(ic, cursorX, y + 15, iconW, iconW);
+        }
+
+        if (sIdx < statItems.length - 1) {
+          cursorX -= gapBetweenGroups;
         }
       });
 
-      ctx.fillStyle = "#b45309";
-      ctx.font = "bold 15px sans-serif";
+      // ビブス・交代順行
+      ctx.fillStyle = tObj.bibs.cssClass === "bibs-sub" ? "#142850" : "#b45309";
+      ctx.font = "bold 17px sans-serif";
       const cleanBibs = tObj.bibs.label.replace(/^[^\s]+\s*/, "");
       const subText = tObj.needsSubOrder
         ? `交代順（${tObj.subCount}人抜け・1番目から順）`
         : "交代なし";
-      ctx.fillText(`${cleanBibs} ｜ ${subText}`, padX + 22, y + 60);
+      ctx.fillText(`${cleanBibs} ｜ ${subText}`, padX + 18, y + 64);
 
-      let memberY = y + 76;
+      // メンバー一覧
+      let memberY = y + 80;
       team.forEach((p, i) => {
-        drawRoundRect(ctx, padX + 20, memberY, innerW - 36, rowH, 8);
+        drawRoundRect(ctx, padX + 16, memberY, innerW - 32, rowH, 8);
         ctx.fillStyle = tObj.needsSubOrder ? "#fffbeb" : "#f8fafc";
         ctx.fill();
         ctx.strokeStyle = tObj.needsSubOrder ? "#fde68a" : "#e2e8f0";
@@ -2260,22 +2287,22 @@
         ctx.stroke();
 
         ctx.fillStyle = "#142850";
-        ctx.font = "bold 17px sans-serif";
+        ctx.font = "bold 21px sans-serif";
         const numLabel = tObj.needsSubOrder ? `${i + 1}.` : "・";
-        ctx.fillText(`${numLabel} ${p.name}`, padX + 34, memberY + 26);
+        ctx.fillText(`${numLabel} ${p.name}`, padX + 28, memberY + 32);
 
-        let rightIconX = width - padX - 48;
+        let rightIconX = width - padX - 54;
         const dispCat = getResultDisplayCategory(p);
         const catImg = canvasIconCache[dispCat];
         if (catImg && catImg.complete) {
-          ctx.drawImage(catImg, rightIconX, memberY + 8, 26, 26);
-          rightIconX -= 32;
+          ctx.drawImage(catImg, rightIconX, memberY + 9, 32, 32);
+          rightIconX -= 38;
         }
 
         if (p.isGuest) {
           const gImg = canvasIconCache.guest;
           if (gImg && gImg.complete) {
-            ctx.drawImage(gImg, rightIconX, memberY + 8, 26, 26);
+            ctx.drawImage(gImg, rightIconX, memberY + 9, 32, 32);
           }
         }
 
