@@ -115,6 +115,10 @@
       display: flex;
       background: #fff;
       border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 61px;
+      z-index: 9;
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
     }
     .tab {
       flex: 1;
@@ -562,11 +566,16 @@
       border-radius: 8px;
       margin-bottom: 12px;
       font-weight: bold;
+      border: 1px solid #c7d2fe;
       border-left: 4px solid var(--gold);
       display: flex;
       align-items: center;
       flex-wrap: wrap;
       gap: 6px;
+      position: sticky;
+      top: 106px;
+      z-index: 8;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
     }
   </style>
 </head>
@@ -926,6 +935,7 @@
     }
 
     renderAll();
+    updateStickyOffsets();
 
     if (LIFF_ID && typeof liff !== "undefined") {
       try {
@@ -935,6 +945,23 @@
       }
     }
   });
+
+  function updateStickyOffsets() {
+    const headerEl = document.querySelector("header");
+    const tabsEl = document.querySelector(".tabs");
+    const summaryEl = document.getElementById("summary-bar");
+    if (!headerEl || !tabsEl) return;
+
+    const headerH = headerEl.getBoundingClientRect().height;
+    tabsEl.style.top = `${headerH}px`;
+
+    if (summaryEl) {
+      const tabsH = tabsEl.getBoundingClientRect().height;
+      summaryEl.style.top = `${headerH + tabsH + 6}px`;
+    }
+  }
+
+  window.addEventListener("resize", updateStickyOffsets);
 
   function initStaticCategoryIcons() {
     ["normal", "bm", "fm", "b"].forEach(cat => {
@@ -990,6 +1017,7 @@
 
     localStorage.removeItem(SESSION_STORAGE_KEY);
     renderAll();
+    updateStickyOffsets();
   }
 
   function unlockApp() {
@@ -1009,6 +1037,7 @@
   function showMainApp() {
     document.getElementById("lock-screen").classList.add("hidden");
     document.getElementById("app-main").classList.remove("hidden");
+    updateStickyOffsets();
   }
 
   function normalizeSubCategory(sub) {
@@ -1071,6 +1100,7 @@
     document.getElementById("tab-game").classList.toggle("hidden", tabName !== "game");
     document.getElementById("tab-members").classList.toggle("hidden", tabName !== "members");
     renderAll();
+    updateStickyOffsets();
   }
 
   function renderCategoryIconsHtml(category, isGuest = false, subCategory = "", sizeClass = "cat-icon-img") {
@@ -1265,6 +1295,8 @@
     } else if ((teamCount === 3 && !allow3) || (teamCount === 4 && !allow4)) {
       selectTeamCount(allow3 ? 3 : 2, false);
     }
+
+    updateStickyOffsets();
   }
 
   function selectTeamCount(count, resetRoundsIfChanged = true) {
