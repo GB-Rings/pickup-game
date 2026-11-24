@@ -240,7 +240,6 @@
       border: 1px solid var(--gold);
       color: var(--gold-dark);
     }
-    .btn-line { background: var(--line-green); color: #fff; width: 100%; font-size: 15px; padding: 12px; }
     .btn-image { background: var(--navy); color: #fff; width: 100%; font-size: 15px; padding: 12px; }
     .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--navy); }
     .btn-sm { padding: 6px 8px; font-size: 12px; }
@@ -674,7 +673,6 @@
       <div id="history-area" class="history-box hidden"></div>
 
       <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
-        <button class="btn btn-line" onclick="shareUrlToLine()">🔗 LINEで共有</button>
         <button class="btn btn-image" onclick="createAndShareResultImage()">📸 画像作成・共有</button>
         <button class="btn btn-outline" onclick="copyResult()">📋 テキストをコピー</button>
       </div>
@@ -742,7 +740,6 @@
   const SESSION_STORAGE_KEY = "gbrings_session_state_v2";
   const CATEGORIES = ["bm", "fm", "b", "normal"];
   const SUB_CATEGORIES = ["bm"];
-  const MAX_LINE_SHARE_URL_LENGTH = 2200;
 
   const CATEGORY_ICON_SVG = {
     bm: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -846,50 +843,6 @@
     }
   }
 
-  function compactTeamResultsForShare(ctx) {
-    if (!ctx || !Array.isArray(ctx.teamResults)) return null;
-    return {
-      r: ctx.roundNum || 1,
-      tc: ctx.effectiveTeamCount || 2,
-      t: ctx.teamResults.map(tObj => ({
-        m: (tObj.members || []).map(p => ({
-          n: p.name,
-          c: p.category,
-          ar: p.assignedRole || p.category,
-          g: p.isGuest ? 1 : 0
-        })),
-        ns: tObj.needsSubOrder ? 1 : 0,
-        sc: tObj.subCount || 0,
-        mo: tObj.minOnCourt || 5,
-        b: tObj.bibs ? [tObj.bibs.label, tObj.bibs.cssClass] : ["", ""]
-      }))
-    };
-  }
-
-  function expandCompactTeamResults(compact) {
-    if (!compact || !Array.isArray(compact.t)) return null;
-    return {
-      roundNum: compact.r || 1,
-      effectiveTeamCount: compact.tc || 2,
-      teamResults: compact.t.map((ct, idx) => ({
-        members: (ct.m || []).map((pm, pIdx) => ({
-          id: `s_${idx}_${pIdx}`,
-          name: pm.n || "",
-          category: pm.c || "normal",
-          assignedRole: pm.ar || pm.c || "normal",
-          isGuest: Boolean(pm.g)
-        })),
-        needsSubOrder: Boolean(ct.ns),
-        subCount: ct.sc || 0,
-        minOnCourt: ct.mo || 5,
-        bibs: {
-          label: (ct.b && ct.b[0]) || "",
-          cssClass: (ct.b && ct.b[1]) || "bibs-off"
-        }
-      }))
-    };
-  }
-
   function applyImportedSessionState(saved) {
     if (!saved || typeof saved !== "object") return;
     if (Array.isArray(saved.members)) {
@@ -908,17 +861,7 @@
     teamCount = [2, 3, 4].includes(saved.teamCount) ? saved.teamCount : 2;
     roundHistory = Array.isArray(saved.roundHistory) ? saved.roundHistory : [];
     currentRound = typeof saved.currentRound === "number" ? saved.currentRound : 0;
-
-    if (saved.compactResult) {
-      const expanded = expandCompactTeamResults(saved.compactResult);
-      if (expanded) {
-        lastRenderedContext = expanded;
-        currentRound = expanded.roundNum;
-        teamCount = expanded.effectiveTeamCount;
-      }
-    } else if (saved.lastRenderedContext) {
-      lastRenderedContext = saved.lastRenderedContext;
-    }
+    lastRenderedContext = saved.lastRenderedContext || null;
 
     if (document.getElementById("pair-same-sub") && typeof saved.pairSameSub === "boolean") {
       document.getElementById("pair-same-sub").checked = saved.pairSameSub;
@@ -929,16 +872,10 @@
     });
   }
 
-  function buildSharePayload({ includeMembers = false, compactForShare = false } = {}) {
+  function buildSessionPayload({ includeMembers = false } = {}) {
     const pairSameSub = document.getElementById("pair-same-sub")
       ? document.getElementById("pair-same-sub").checked
       : true;
-
-    if (compactForShare) {
-      return {
-        compactResult: compactTeamResultsForShare(lastRenderedContext)
-      };
-    }
 
     const payload = {
       selectedMemberIds: Array.from(selectedMemberIds),
@@ -956,53 +893,8 @@
     return payload;
   }
 
-  function buildShareUrl({ includeMembers = false, compactForShare = false } = {}) {
-    const payload = buildSharePayload({ includeMembers, compactForShare });
-    const encodedState = encodeStateToHash(payload);
-    const baseUrl = window.location.origin + window.location.pathname;
-    if (!encodedState) return baseUrl;
-    return `${baseUrl}#state=${encodedState}`;
-  }
-
-  async function shareUrlToLine() {
-    if (!lastRenderedContext || !lastRenderedContext.teamResults || lastRenderedContext.teamResults.length === 0) {
-      alert("先にチーム分けを実行してください。");
-      return;
-    }
-
-    const shareUrl = buildShareUrl({ includeMembers: false, compactForShare: true });
-    const roundLabel = `${currentRound || 1}回戦`;
-    const shareMessage = `🏀 GB-Rings 🏀 チーム分け結果（${roundLabel}）\n${shareUrl}`;
-    const lineSchemeUrl = `https://line.me/R/share?text=${encodeURIComponent(shareMessage)}`;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-      } catch (e) {
-        // クリップボード書き込み失敗時は無視
-      }
-    }
-
-    if (typeof liff !== "undefined" && liff.isInClient()) {
-      try {
-        await liff.sendMessages([{ type: "text", text: shareMessage }]);
-        alert("トーク画面に共有URLを送信しました！");
-        return;
-      } catch (e) {
-        console.warn("LIFF sendMessages fallback to URL share:", e);
-      }
-    }
-
-    if (lineSchemeUrl.length > MAX_LINE_SHARE_URL_LENGTH) {
-      alert("共有URLが長いためクリップボードにコピーしました。LINEのトーク画面に貼り付けて送信してください。");
-      return;
-    }
-
-    window.location.href = lineSchemeUrl;
-  }
-
   function openInExternalBrowser() {
-    const transferPayload = buildSharePayload({ includeMembers: true, compactForShare: false });
+    const transferPayload = buildSessionPayload({ includeMembers: true });
     const url = new URL(window.location.href);
     url.searchParams.set("openExternalBrowser", "1");
     const encodedState = encodeStateToHash(transferPayload);
@@ -1056,7 +948,7 @@
   }
 
   function saveSessionState() {
-    const payload = buildSharePayload({ includeMembers: false, compactForShare: false });
+    const payload = buildSessionPayload({ includeMembers: false });
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
   }
 
@@ -1424,10 +1316,16 @@
     return shuffle(caps);
   }
 
+  // ゲストが少ないチームから順にビブス着用頻度が高いスロット（A -> C -> D -> B）へ割り当て、ゲストが多いチームを「ビブスなし（B）」優先にする
   function prioritizeNonGuestTeamsForBibs(teams) {
     if (!teams || teams.length <= 1) return teams;
 
-    const bibsSlotOrder = teams.length === 2 ? [0, 1] : [0, 2, 1, 3].slice(0, teams.length);
+    const bibsSlotOrder =
+      teams.length === 2
+        ? [0, 1]
+        : teams.length === 3
+          ? [0, 2, 1]
+          : [0, 2, 3, 1].slice(0, teams.length);
 
     const rankedTeams = teams
       .map(t => ({
@@ -1998,16 +1896,26 @@
       }
       return { label: "👕 ビブスなし", cssClass: "bibs-off" };
     }
+    if (totalTeams === 3) {
+      if (teamIdx === 0) {
+        return { label: "🎽 ビブス着用（常時）", cssClass: "bibs-on" };
+      }
+      if (teamIdx === 1) {
+        return { label: "👕 ビブスなし", cssClass: "bibs-off" };
+      }
+      return { label: "🎽 ビブス着用（Bと対戦時のみ）", cssClass: "bibs-sub" };
+    }
+    // 4チーム時
     if (teamIdx === 0) {
-      return { label: "🎽 ビブス①（常時着用）", cssClass: "bibs-on" };
+      return { label: "🎽 ビブス着用（常時）", cssClass: "bibs-on" };
     }
     if (teamIdx === 1) {
-      return { label: "👕 ビブスなし（基本なし）", cssClass: "bibs-off" };
+      return { label: "👕 ビブスなし", cssClass: "bibs-off" };
     }
     if (teamIdx === 2) {
-      return { label: "🎽 ビブス②（Bと対戦時のみ着用）", cssClass: "bibs-sub" };
+      return { label: "🎽 ビブス着用（B/Dと対戦時のみ）", cssClass: "bibs-sub" };
     }
-    return { label: "👕 ビブスなし（基本なし・Aと対戦時のみ調整）", cssClass: "bibs-off" };
+    return { label: "🎽 ビブス着用（Bと対戦時のみ）", cssClass: "bibs-sub" };
   }
 
   function generateTeams(isSwapMode = false) {
