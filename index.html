@@ -572,10 +572,6 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 6px;
-      position: sticky;
-      top: 106px;
-      z-index: 8;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
     }
   </style>
 </head>
@@ -745,7 +741,7 @@
   const APP_PASSCODE = "123gb";
   const AUTH_STORAGE_KEY = "gbrings_unlocked_123gb_v1";
   const LIFF_ID = "";
-  const STORAGE_KEY = "basketball_team_members_v4";
+  const STORAGE_KEY = "basketball_team_members_v5";
   const SESSION_STORAGE_KEY = "gbrings_session_state_v2";
   const CATEGORIES = ["bm", "fm", "b", "normal"];
   const SUB_CATEGORIES = ["bm"];
@@ -935,7 +931,6 @@
     }
 
     renderAll();
-    updateStickyOffsets();
 
     if (LIFF_ID && typeof liff !== "undefined") {
       try {
@@ -945,23 +940,6 @@
       }
     }
   });
-
-  function updateStickyOffsets() {
-    const headerEl = document.querySelector("header");
-    const tabsEl = document.querySelector(".tabs");
-    const summaryEl = document.getElementById("summary-bar");
-    if (!headerEl || !tabsEl) return;
-
-    const headerH = headerEl.getBoundingClientRect().height;
-    tabsEl.style.top = `${headerH}px`;
-
-    if (summaryEl) {
-      const tabsH = tabsEl.getBoundingClientRect().height;
-      summaryEl.style.top = `${headerH + tabsH + 6}px`;
-    }
-  }
-
-  window.addEventListener("resize", updateStickyOffsets);
 
   function initStaticCategoryIcons() {
     ["normal", "bm", "fm", "b"].forEach(cat => {
@@ -1017,7 +995,6 @@
 
     localStorage.removeItem(SESSION_STORAGE_KEY);
     renderAll();
-    updateStickyOffsets();
   }
 
   function unlockApp() {
@@ -1037,7 +1014,6 @@
   function showMainApp() {
     document.getElementById("lock-screen").classList.add("hidden");
     document.getElementById("app-main").classList.remove("hidden");
-    updateStickyOffsets();
   }
 
   function normalizeSubCategory(sub) {
@@ -1100,7 +1076,6 @@
     document.getElementById("tab-game").classList.toggle("hidden", tabName !== "game");
     document.getElementById("tab-members").classList.toggle("hidden", tabName !== "members");
     renderAll();
-    updateStickyOffsets();
   }
 
   function renderCategoryIconsHtml(category, isGuest = false, subCategory = "", sizeClass = "cat-icon-img") {
@@ -1295,8 +1270,6 @@
     } else if ((teamCount === 3 && !allow3) || (teamCount === 4 && !allow4)) {
       selectTeamCount(allow3 ? 3 : 2, false);
     }
-
-    updateStickyOffsets();
   }
 
   function selectTeamCount(count, resetRoundsIfChanged = true) {
@@ -2172,12 +2145,12 @@
     const rowH = 50;
     const rowGap = 8;
 
-    let estimatedH = 215;
+    let estimatedH = 225;
     if (roundNum >= 2) estimatedH += 48;
     if (scheduleText) estimatedH += 48;
 
     teamResults.forEach(tObj => {
-      estimatedH += 116 + tObj.members.length * (rowH + rowGap) + 24;
+      estimatedH += 126 + tObj.members.length * (rowH + rowGap) + 24;
     });
     estimatedH += 32;
 
@@ -2248,7 +2221,7 @@
       const normCnt = countByResultCat(team, "normal");
       const fmCnt = countByResultCat(team, "fm");
       const bCnt = countByResultCat(team, "b");
-      const cardH = 98 + team.length * (rowH + rowGap);
+      const cardH = 106 + team.length * (rowH + rowGap);
 
       drawRoundRect(ctx, padX, y, innerW, cardH, 12);
       ctx.fillStyle = "#ffffff";
@@ -2260,7 +2233,7 @@
       ctx.fillStyle = "#142850";
       ctx.fillRect(padX, y, 8, cardH);
 
-      // 左側：チーム名＋人数（右側の集計と重ならないようフォントサイズを調整）
+      // 左側：チーム名＋人数
       ctx.fillStyle = "#142850";
       ctx.font = "bold 21px sans-serif";
       ctx.fillText(`${tName}（${team.length}人）`, padX + 18, y + 33);
@@ -2299,17 +2272,52 @@
         }
       });
 
-      // ビブス・交代順行
-      ctx.fillStyle = tObj.bibs.cssClass === "bibs-sub" ? "#142850" : "#b45309";
-      ctx.font = "bold 17px sans-serif";
-      const cleanBibs = tObj.bibs.label.replace(/^[^\s]+\s*/, "");
+      // アプリと同じスタイルのビブスバッジ＋交代順表記
+      const bibsClass = tObj.bibs.cssClass;
+      let badgeBg = "#fef3c7";
+      let badgeBorder = "#fcd34d";
+      let badgeText = "#b45309";
+      if (bibsClass === "bibs-sub") {
+        badgeBg = "#e0e7ff";
+        badgeBorder = "#93c5fd";
+        badgeText = "#142850";
+      } else if (bibsClass === "bibs-off") {
+        badgeBg = "#f1f5f9";
+        badgeBorder = "#cbd5e1";
+        badgeText = "#475569";
+      }
+
+      const bibsLabel = tObj.bibs.label;
+      ctx.font = "bold 15px sans-serif";
+      const badgeTextW = ctx.measureText(bibsLabel).width;
+      const badgePadX = 10;
+      const badgeW = badgeTextW + badgePadX * 2;
+      const badgeH = 28;
+      const badgeX = padX + 18;
+      const badgeY = y + 46;
+
+      drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 6);
+      ctx.fillStyle = badgeBg;
+      ctx.fill();
+      ctx.strokeStyle = badgeBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = badgeText;
+      ctx.fillText(bibsLabel, badgeX + badgePadX, badgeY + 19);
+
+      // 交代順（アプリと同じくオレンジ文字・交代なしはグレー）
+      ctx.font = "bold 15px sans-serif";
       const subText = tObj.needsSubOrder
-        ? `交代順（${tObj.subCount}人抜け・1番目から順）`
+        ? `🔁 交代順（${tObj.subCount}人抜け・1番目から順）`
         : "交代なし";
-      ctx.fillText(`${cleanBibs} ｜ ${subText}`, padX + 18, y + 64);
+      ctx.fillStyle = tObj.needsSubOrder ? "#b45309" : "#475569";
+      ctx.textAlign = "right";
+      ctx.fillText(subText, width - padX - 16, badgeY + 19);
+      ctx.textAlign = "left";
 
       // メンバー一覧
-      let memberY = y + 80;
+      let memberY = y + 86;
       team.forEach((p, i) => {
         drawRoundRect(ctx, padX + 16, memberY, innerW - 32, rowH, 8);
         ctx.fillStyle = tObj.needsSubOrder ? "#fffbeb" : "#f8fafc";
